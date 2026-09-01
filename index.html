@@ -83,6 +83,8 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .hmeta span{font-size:11px;font-weight:650;letter-spacing:.5px;text-transform:uppercase;color:var(--on-hero-dim)}
 .hmeta b{font-size:15px;font-weight:650;font-variant-numeric:tabular-nums;white-space:nowrap}
 
+.tzline{font-size:12px;color:var(--on-hero-dim);text-align:center;margin-top:10px}
+.tznote{margin-top:12px;background:rgba(255,255,255,.14);border-radius:13px;padding:11px 13px;font-size:13px;line-height:1.45;color:#fff}
 .startrow{display:flex;gap:8px;margin-top:10px}
 .startrow input{flex:1;min-width:0;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:13px;padding:11px;font-size:15px;color:#fff}
 .startrow input::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.8}
@@ -127,6 +129,7 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .dutyline{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin-top:6px}
 .win{font-size:clamp(30px,8.5vw,38px);font-weight:750;letter-spacing:-1.2px;color:var(--accent-ink);font-variant-numeric:tabular-nums;line-height:1.1;margin-top:8px}
 .winsub{font-size:14px;color:var(--dim);margin-top:4px}
+.winphone{font-size:14px;font-weight:600;color:var(--accent-ink);background:var(--accent-soft);border-radius:12px;padding:10px 12px;margin-top:10px}
 .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px 14px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
 @media(min-width:560px){.stats{grid-template-columns:repeat(4,1fr)}}
 .stat{display:grid;gap:3px;min-width:0}
@@ -206,6 +209,9 @@ input[type=number]:focus,select:focus{outline:2px solid var(--accent);outline-of
       <div><span id="endLabel">Окно питания</span><b id="ends">—</b></div>
     </div>
 
+    <p class="tzline" id="tzLine"></p>
+    <p class="tznote" id="tzNote" hidden></p>
+
     <button id="fastBtn" class="btn btn-amber">Начать голодание</button>
     <button id="editStart" class="btn btn-link">Указать другое время начала</button>
     <div class="startrow" id="startWrap" hidden>
@@ -237,6 +243,7 @@ input[type=number]:focus,select:focus{outline:2px solid var(--accent);outline-of
       <p class="dutyline" id="dutyLine"></p>
       <p class="win" id="win">—</p>
       <p class="winsub" id="winSub"></p>
+      <p class="winphone" id="winPhone" hidden></p>
       <div class="stats" id="stats"></div>
       <p class="note" id="note" hidden></p>
     </div>
@@ -297,6 +304,18 @@ const stamp=d=>d.toLocaleString("ru-RU",{day:"numeric",month:"short",hour:"2-dig
 const dur=ms=>[ms/36e5,ms/6e4%60,ms/1e3%60].map(x=>String(Math.floor(x)).padStart(2,"0")).join(":");
 const localValue=d=>new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,16);
 
+/* ---------- часовые пояса ----------
+   Окно питания считается по местному времени станции, а часы телефона
+   после прилёта переключаются сами. Поэтому всё, что показываем, всегда
+   подписано поясом, а длительность голодания считается по абсолютному
+   времени и от смены пояса не зависит. */
+const devZone=()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||""}catch(e){return ""}};
+const devOff=()=>-new Date().getTimezoneOffset()/60;
+const city=z=>((z||"").split("/")[1]||z||"—").replace(/_/g," ");
+const zoneOff=(zone,date)=>{try{return Circadian.off(zone,date)}catch(e){return devOff()}};
+const inZone=(ms,zone)=>{const o={hour:"2-digit",minute:"2-digit"};try{return new Date(ms).toLocaleTimeString("ru-RU",zone?Object.assign({timeZone:zone},o):o)}catch(e){return new Date(ms).toLocaleTimeString("ru-RU",o)}};
+const utc=h=>{const sign=h<0?"−":"+",a=Math.abs(h),H=Math.floor(a),M=Math.round((a-H)*60);return "UTC"+sign+H+(M?":"+String(M).padStart(2,"0"):"")};
+
 /* ---------- header ---------- */
 function drawHeader(){
   const t=today(),d=s.days.find(x=>x.date===t);
@@ -347,6 +366,22 @@ function drawFast(){
 
   q("#started").textContent=start?stamp(start):"—";
   q("#hmeta").hidden=!start;
+
+  /* Часы телефона — та шкала, в которой нарисованы «Начало» и «Окно».
+     Если пояс сменился уже после старта, честно показываем сдвиг часов
+     и то, что сам интервал при этом не тронут. */
+  const dz=devZone(),nowOff=devOff();
+  if(start&&!s.fastTz){s.fastTz=dz;s.fastTzOff=nowOff;save()}
+  q("#tzLine").textContent="Время телефона: "+city(dz)+" · "+utc(nowOff);
+  const moved=start&&s.fastTz&&s.fastTz!==dz,tzNote=q("#tzNote");
+  tzNote.hidden=!moved;
+  if(moved){
+    const shift=nowOff-(s.fastTzOff??nowOff),h=Math.abs(shift);
+    tzNote.textContent="Телефон перешёл на "+city(dz)+" ("+utc(nowOff)+"), старт был по "+city(s.fastTz)+
+      " ("+utc(s.fastTzOff??nowOff)+"). Интервал "+s.mode+" ч не изменился — часы сместились на "+
+      (shift<0?"−":"+")+(Number.isInteger(h)?h:h.toFixed(1))+" ч. Окно питания по новому времени: "+
+      (end?clock(end):"—")+".";
+  }
   q("#ring").classList.toggle("eat",phase==="eat");
   pct=Math.max(0,Math.min(100,pct));
   const bar=q("#bar");
@@ -383,7 +418,11 @@ function drawDay(){
   q("#dutyLine").innerHTML='<i class="dot" style="background:'+(KIND[d.kind]||KIND.duty)+'"></i>'+
     esc(d.code)+(d.times.length?" · "+esc(d.times.join(" → ")):"");
   q("#win").textContent=from+" – "+to;
-  q("#winSub").textContent="Местное время: "+esc(p.zone.split("/")[1].replace(/_/g," "))+" ("+esc(p.dest)+")";
+  const sOff=zoneOff(p.zone,d.date),dz=devZone(),pOff=zoneOff(dz,d.date);
+  q("#winSub").textContent="Местное время станции · "+city(p.zone)+" ("+p.dest+" · "+utc(sOff)+")";
+  const w=Circadian.instants(d,p),shown=q("#winPhone");
+  shown.hidden=Math.abs(sOff-pOff)<1e-6;
+  shown.textContent="На часах телефона ("+city(dz)+"): "+inZone(w.from,dz)+" – "+inZone(w.to,dz);
   q("#stats").innerHTML=[
     ["Голодание",to+" → "+from],
     ["Питание",p.h+" ч"],
@@ -416,8 +455,8 @@ const drawAll=()=>{drawHeader();drawDay();drawMetrics();drawFast()};
 /* ---------- events ---------- */
 q("#fastBtn").onclick=()=>{
   const now=new Date(),start=s.fastStart?new Date(s.fastStart):null;
-  if(start&&now<new Date(start.getTime()+ +s.mode*36e5))delete s.fastStart;
-  else s.fastStart=now.toISOString();
+  if(start&&now<new Date(start.getTime()+ +s.mode*36e5)){delete s.fastStart;delete s.fastTz;delete s.fastTzOff}
+  else{s.fastStart=now.toISOString();s.fastTz=devZone();s.fastTzOff=devOff()}
   q("#startWrap").hidden=true;save();drawFast();
 };
 q("#editStart").onclick=()=>{
@@ -432,6 +471,7 @@ q("#applyStart").onclick=()=>{
   const v=q("#startAt").value;if(!v)return;
   const t=new Date(v);if(isNaN(t))return;
   s.fastStart=(t>new Date()?new Date():t).toISOString();
+  s.fastTz=devZone();s.fastTzOff=devOff();
   q("#startWrap").hidden=true;save();drawFast();
 };
 q("#modeSeg").onclick=e=>{
