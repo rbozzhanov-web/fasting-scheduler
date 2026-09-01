@@ -352,7 +352,7 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
       <button id="clear" class="btn btn-danger mini">Удалить</button>
     </div>
   </section>
-    <p class="foot">Roster, замеры и настройки хранятся только на этом устройстве и никуда не отправляются.</p>
+    <p class="foot">Roster, замеры и настройки хранятся только на этом устройстве и никуда не отправляются.<br>Версия <b id="ver">—</b></p>
   </div>
 </div>
 
@@ -361,7 +361,7 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 <script src="roster-parser.js"></script>
 <script src="circadian.js"></script>
 <script>
-const q=s=>document.querySelector(s),K="fuel-v4";
+const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v22";
 let s=JSON.parse(localStorage.getItem(K)||"{}");
 s.mode=s.mode||"16";s.context=s.context||"auto";s.days=s.days||[];s.metrics=s.metrics||[];s.goal=s.goal||"fat";
 s.bf=Object.assign({on:true,from:"06:30",to:"10:00"},s.bf);
@@ -829,6 +829,7 @@ function drawStatus(){
   q("#status").textContent=s.file?s.file.name+" · "+s.file.count+" дней":s.days.length?s.days.length+" дней импортировано":"Файл не выбран";
 }
 
+q("#ver").textContent=APP_VERSION;
 q("#mode").value=s.mode;q("#goal").value=s.goal;
 q("#bfOn").checked=!!s.bf.on;q("#bfFrom").value=s.bf.from;q("#bfTo").value=s.bf.to;q("#bfTimes").hidden=!s.bf.on;
 drawStatus();drawAll();
@@ -836,14 +837,24 @@ setInterval(()=>{drawFast();checkDue()},1000);
 schedule();
 
 /* ---------- service worker ---------- */
+/* iOS восстанавливает свёрнутый PWA из памяти: страница не грузится заново,
+   поэтому обновление само не проверялось. Проверяем при запуске и каждый раз,
+   когда приложение возвращается на экран, и применяем найденное сразу. */
 if("serviceWorker"in navigator){
+  let reloading=false;
   navigator.serviceWorker.register("./sw.js").then(r=>{
-    const offer=()=>q("#update").classList.add("show");
-    if(r.waiting)offer();
-    r.addEventListener("updatefound",()=>r.installing?.addEventListener("statechange",()=>{if(r.waiting)offer()}));
-    q("#reload").onclick=()=>r.waiting?.postMessage("SKIP_WAITING");
+    const apply=()=>{if(!r.waiting)return false;r.waiting.postMessage("SKIP_WAITING");return true};
+    const check=()=>{if(!apply())r.update().catch(()=>{})};
+    check();
+    document.addEventListener("visibilitychange",()=>{if(!document.hidden)check()});
+    r.addEventListener("updatefound",()=>r.installing?.addEventListener("statechange",()=>{
+      if(r.waiting&&!apply())q("#update").classList.add("show");
+    }));
+    q("#reload").onclick=()=>apply();
   });
-  navigator.serviceWorker.addEventListener("controllerchange",()=>location.reload());
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{
+    if(reloading)return;reloading=true;location.reload();
+  });
 }
 </script>
 </body>
