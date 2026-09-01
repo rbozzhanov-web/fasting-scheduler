@@ -7,10 +7,6 @@
 const MODES=["12","14","16","18"],CONTEXTS=["auto","training","recovery"],GOALS=["fat","keep"];
 const DATE_RE=/^\d{4}-\d{2}-\d{2}$/;
 
-/* Формы YYYY-MM-DD мало: "2026-99-99" проходит регулярку, но ломает Intl
-   в circadian.js (RangeError: Invalid time value), а "2026-02-31" молча
-   превращается в 3 марта. Сверяем разбор с исходной строкой — так
-   отсеивается и то, и другое. */
 const isRealDate=v=>{
   if(typeof v!=="string"||!DATE_RE.test(v))return false;
   const t=Date.parse(v+"T00:00:00Z");
@@ -27,9 +23,14 @@ const isValidMetric=m=>!!m&&typeof m==="object"&&typeof m.date==="string"&&!isNa
   &&Number.isFinite(m.fat)&&m.fat>=3&&m.fat<=70
   &&(m.weight==null||(Number.isFinite(m.weight)&&m.weight>=30&&m.weight<=250));
 
-/* Повреждённый JSON целиком -> сброс на дефолты, corrupted:true (вызывающий
-   код решает, показывать ли одноразовое уведомление). Отдельные испорченные
-   поля в валидном JSON нормализуются тихо, без флага. */
+const validFastEnd=(start,mode,end)=>{
+  if(start==null||end==null)return false;
+  const a=new Date(start),b=new Date(end);
+  if(!Number.isFinite(a.getTime())||!Number.isFinite(b.getTime()))return false;
+  const nominal=a.getTime()+ +mode*36e5;
+  return b.getTime()>=a.getTime()&&b.getTime()<=nominal;
+};
+
 function normalizeState(raw){
   let s,corrupted=false;
   try{
@@ -48,19 +49,15 @@ function normalizeState(raw){
   s.notify=!!s.notify;
   s.fired=(s.fired&&typeof s.fired==="object"&&!Array.isArray(s.fired))?s.fired:{};
   s.parserWarnings=Array.isArray(s.parserWarnings)?s.parserWarnings:[];
-  /* s.date — выбранный в интерфейсе день, а не данные: он приходит из
-     резервной копии как есть и нигде больше не проверяется. Несуществующая
-     дата здесь роняет drawDay() на старте, поэтому чиним тихо, как и
-     остальные отдельные поля. */
   if(s.date!=null&&!isRealDate(s.date))delete s.date;
   if(s.fastStart!=null&&isNaN(new Date(s.fastStart)))delete s.fastStart;
+  /* fastEnd — не самостоятельная дата, а факт досрочного окончания именно
+     текущего цикла. Без валидного fastStart или за пределами планового конца
+     он опасен: мог бы открыть окно питания в произвольный момент. */
+  if(s.fastEnd!=null&&!validFastEnd(s.fastStart,s.mode,s.fastEnd))delete s.fastEnd;
   return{state:s,corrupted};
 }
 
-/* Backup — менее доверенный источник, чем случайно повреждённый
-   localStorage: любое несоответствие отклоняет файл целиком, до
-   какой-либо записи, а не чинит его по частям. Отсутствие более новых
-   полей (например parserWarnings) не является причиной отказа. */
 function validateBackup(d){
   if(!d||typeof d!=="object")throw new Error("файл повреждён");
   if(d.app!=="fuel-window")throw new Error("это не копия Fuel Window");
@@ -72,8 +69,10 @@ function validateBackup(d){
   if(!GOALS.includes(st.goal))throw new Error("некорректная цель");
   if(!Array.isArray(st.days)||!st.days.every(isValidDay))throw new Error("повреждён ростер в копии");
   if(!Array.isArray(st.metrics)||!st.metrics.every(isValidMetric))throw new Error("повреждены замеры в копии");
+  if(st.fastStart!=null&&isNaN(new Date(st.fastStart)))throw new Error("некорректное начало голодания");
+  if(st.fastEnd!=null&&!validFastEnd(st.fastStart,st.mode,st.fastEnd))throw new Error("некорректное окончание голодания");
 }
 
-const State={MODES,CONTEXTS,GOALS,DATE_RE,isRealDate,isValidDay,isValidMetric,normalizeState,validateBackup};
+const State={MODES,CONTEXTS,GOALS,DATE_RE,isRealDate,isValidDay,isValidMetric,validFastEnd,normalizeState,validateBackup};
 if(typeof module!=="undefined"&&module.exports)module.exports=State;else window.State=State;
 })();
