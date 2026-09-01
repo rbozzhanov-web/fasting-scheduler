@@ -148,9 +148,6 @@ function installGoalControl(){
   const label=row&&row.querySelector(".rl");
   const hint=label&&label.querySelector("small");
 
-  /* Старый select остаётся источником истины для существующего index.js.
-     Визуально прячем его, но не удаляем: обработчик onchange продолжает
-     выполнять все пересчёты roster/ICS без дублирования бизнес-логики. */
   Object.assign(select.style,{position:"absolute",opacity:"0",pointerEvents:"none",width:"1px",height:"1px",minWidth:"1px",padding:"0",border:"0"});
   select.setAttribute("aria-hidden","true");
   select.tabIndex=-1;
@@ -209,6 +206,56 @@ function installGoalControl(){
   render();
 }
 
+function localBackgroundNotifications(){
+  return typeof Notification!=="undefined"&&"showTrigger" in Notification.prototype;
+}
+
+function installReminderUx(){
+  const notifyHint=document.querySelector("#notifyHint");
+  const notifyRow=notifyHint&&notifyHint.closest(".row");
+  const icsRow=document.querySelector("#icsRow");
+  const ics=document.querySelector("#ics");
+  const icsFile=document.querySelector("#icsFile");
+  if(!notifyHint||!icsRow)return;
+
+  if(!localBackgroundNotifications()){
+    notifyHint.textContent="Работают только пока приложение открыто. Для фоновых сигналов используйте Календарь ниже.";
+    if(notifyRow&&!notifyRow.querySelector(".reminder-badge")){
+      const badge=document.createElement("span");
+      badge.className="reminder-badge muted";
+      badge.textContent="В приложении";
+      notifyRow.querySelector(".rl")?.appendChild(badge);
+    }
+  }
+
+  const label=icsRow.querySelector(".rl");
+  if(label){
+    for(const node of [...label.childNodes])if(node.nodeType===3&&node.textContent.trim())node.textContent="Фоновые напоминания ";
+    if(!label.querySelector(".reminder-badge")){
+      const badge=document.createElement("span");
+      badge.className="reminder-badge good";
+      badge.textContent="Рекомендуется";
+      label.appendChild(badge);
+    }
+  }
+  if(ics)ics.textContent="Добавить в Календарь";
+  if(icsFile)icsFile.textContent="Сохранить .ics";
+  icsRow.classList.add("reminder-primary-row");
+  ics?.classList.add("reminder-primary-btn");
+
+  const style=document.createElement("style");
+  style.textContent=`
+    .reminder-badge{display:inline-flex;align-items:center;width:max-content;margin-top:7px;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;line-height:1.2;letter-spacing:.01em}
+    .reminder-badge.muted{color:var(--dim);background:var(--surface-2);border:1px solid var(--line)}
+    .reminder-badge.good{color:var(--good-fg);background:var(--good-bg)}
+    .reminder-primary-row{background:color-mix(in srgb,var(--accent-soft) 42%,transparent);border-radius:18px;padding:12px!important;margin:4px 0!important}
+    .reminder-primary-row .rl{font-weight:700}
+    .reminder-primary-btn{background-color:var(--act)!important;color:var(--on-act)!important;border-color:color-mix(in srgb,var(--act) 65%,var(--text))!important;font-weight:700!important}
+    .reminder-primary-row .steps{margin-top:2px!important;color:var(--dim);line-height:1.4}
+  `;
+  document.head.appendChild(style);
+}
+
 function installBrowserGuards(){
   if(typeof window==="undefined"||typeof document==="undefined")return;
 
@@ -252,9 +299,6 @@ function installBrowserGuards(){
     clearEarlyEnd();
   },true);
 
-  /* Ручное новое начало выполняем сами, а не сначала удаляем fastEnd из
-     localStorage: старый index.html держит свою копию state в памяти и мог
-     тут же записать прежний fastEnd обратно уже с новым fastStart. */
   document.addEventListener("click",e=>{
     const b=e.target&&e.target.closest&&e.target.closest("#applyStart");
     if(!b)return;
@@ -275,6 +319,7 @@ function installBrowserGuards(){
     const fat=document.querySelector("#fat");if(fat)fat.removeAttribute("placeholder");
     const weight=document.querySelector("#weight");if(weight)weight.removeAttribute("placeholder");
     installGoalControl();
+    installReminderUx();
 
     if(typeof window.fastEvents==="function"){
       window.fastEvents=function(){
@@ -298,8 +343,6 @@ function installBrowserGuards(){
       window.buildIcs=patched;
     }
 
-    /* После зафиксированного окончания подпись шкалы показывает фактическую
-       длительность, а не прежнюю цель режима. */
     if(typeof window.drawFast==="function"&&!window.drawFast.__fuelActualLabelPatched){
       const originalDraw=window.drawFast;
       const patchedDraw=function(){
