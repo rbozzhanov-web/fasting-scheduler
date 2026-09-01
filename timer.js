@@ -165,13 +165,15 @@ function installGoalControl(){
 
   const style=document.createElement("style");
   style.textContent=`
-    .goal-seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;width:min(100%,310px);padding:4px;border-radius:22px;background:var(--sunken);border:1px solid var(--sunken-line);box-shadow:0 1px 0 rgba(255,255,255,.05) inset}
-    .goal-seg button{min-width:0;height:42px;border:0;border-radius:18px;background:transparent;color:var(--dim);font-weight:650;font-size:14px;white-space:nowrap;padding:0 12px;transition:background .18s ease,color .18s ease,box-shadow .18s ease,transform .12s ease}
+    .goal-seg{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:0;width:100%;padding:4px;border-radius:22px;background:var(--sunken);border:1px solid var(--sunken-line);box-shadow:0 1px 0 rgba(255,255,255,.05) inset;overflow:hidden}
+    .goal-seg::before{content:"";position:absolute;z-index:0;top:4px;bottom:4px;left:4px;width:calc((100% - 8px)/2);border-radius:18px;background-color:var(--glass-control);background-image:var(--glass-spec);box-shadow:var(--glass-control-shadow);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+    .goal-seg.keep::before{transform:translateX(100%)}
+    .goal-seg button{position:relative;z-index:1;min-width:0;height:42px;border:0;border-radius:18px;background:transparent!important;background-image:none!important;box-shadow:none!important;color:var(--dim);font-weight:650;font-size:14px;white-space:nowrap;padding:0 10px;transition:color .18s ease,transform .12s ease}
     .goal-seg button:active{transform:scale(.97)}
-    .goal-seg button.on{color:var(--text);background-color:var(--glass-control);background-image:var(--glass-spec);box-shadow:var(--glass-control-shadow)}
+    .goal-seg button.on{color:var(--text)}
     .goal-row{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:12px!important;align-items:start!important}
     .goal-row .rl{width:100%;max-width:none}
-    .goal-row .rl small{display:block;max-width:34em;line-height:1.4;margin-top:4px}
+    .goal-row .rl small{display:block;max-width:34em;line-height:1.4;margin-top:4px;min-height:2.8em}
     .goal-row .goal-seg{justify-self:stretch;width:100%;max-width:none}
     @media(max-width:430px){
       .sheet-body{padding-left:16px!important;padding-right:16px!important}
@@ -185,6 +187,7 @@ function installGoalControl(){
 
   const render=()=>{
     const value=select.value||readState().goal||"fat";
+    seg.classList.toggle("keep",value==="keep");
     seg.querySelectorAll("button").forEach(b=>{
       const on=b.dataset.goal===value;
       b.classList.toggle("on",on);
