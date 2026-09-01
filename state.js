@@ -23,12 +23,15 @@ const isValidMetric=m=>!!m&&typeof m==="object"&&typeof m.date==="string"&&!isNa
   &&Number.isFinite(m.fat)&&m.fat>=3&&m.fat<=70
   &&(m.weight==null||(Number.isFinite(m.weight)&&m.weight>=30&&m.weight<=250));
 
+/* fastEnd — исторический факт завершения текущего цикла. Он не должен
+   становиться невалидным только потому, что пользователь потом поменял
+   режим. Ограничиваем его сутками от старта: это покрывает все режимы и
+   отсекает повреждённые/чужие даты. */
 const validFastEnd=(start,mode,end)=>{
   if(start==null||end==null)return false;
   const a=new Date(start),b=new Date(end);
   if(!Number.isFinite(a.getTime())||!Number.isFinite(b.getTime()))return false;
-  const nominal=a.getTime()+ +mode*36e5;
-  return b.getTime()>=a.getTime()&&b.getTime()<=nominal;
+  return b.getTime()>=a.getTime()&&b.getTime()<=a.getTime()+864e5;
 };
 
 function normalizeState(raw){
@@ -51,9 +54,6 @@ function normalizeState(raw){
   s.parserWarnings=Array.isArray(s.parserWarnings)?s.parserWarnings:[];
   if(s.date!=null&&!isRealDate(s.date))delete s.date;
   if(s.fastStart!=null&&isNaN(new Date(s.fastStart)))delete s.fastStart;
-  /* fastEnd — не самостоятельная дата, а факт досрочного окончания именно
-     текущего цикла. Без валидного fastStart или за пределами планового конца
-     он опасен: мог бы открыть окно питания в произвольный момент. */
   if(s.fastEnd!=null&&!validFastEnd(s.fastStart,s.mode,s.fastEnd))delete s.fastEnd;
   return{state:s,corrupted};
 }
