@@ -8,22 +8,18 @@ TBS:"Asia/Tbilisi",BAK:"Asia/Baku",TAS:"Asia/Tashkent",FRU:"Asia/Bishkek",DME:"E
 JED:"Asia/Riyadh",MED:"Asia/Riyadh",RUH:"Asia/Riyadh",TLV:"Asia/Jerusalem",CAI:"Africa/Cairo",SSH:"Africa/Cairo"
 };
 const home="ALA",clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-/* Смещение зоны в конкретный момент UTC. В день перевода стрелок у суток
-   два разных смещения, поэтому «смещение даты» — недостаточная единица:
-   всё, что должно попасть в календарь минута в минуту, считается отсюда. */
 const offAt=(zone,ms)=>{const p=new Intl.DateTimeFormat("en-US",{timeZone:zone,timeZoneName:"shortOffset",hour:"2-digit"}).formatToParts(new Date(ms)).find(x=>x.type==="timeZoneName")?.value||"GMT";const m=p.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);return m?(m[1]==="-"?-1:1)*(+m[2]+(+m[3]||0)/60):0};
-/* Смещение «этого дня» — по полудню, когда перевод стрелок (обычно ночью)
-   уже позади. Для арифметики телесных часов в stateAt() этого достаточно:
-   там сутки и так единица счёта. */
 const off=(zone,date)=>offAt(zone,Date.parse(date+"T12:00:00Z"));
-/* Стенное время зоны -> момент времени. Смещение зависит от искомого
-   момента, поэтому берём приближение по «наивному» UTC и уточняем один
-   раз — этого хватает на любой реальный перевод стрелок. В несуществующий
-   час (весенний перевод) время сдвигается вперёд, в задвоенный (осенний)
-   выбирается второе вхождение. */
 const zoned=(zone,ms)=>ms-offAt(zone,ms-offAt(zone,ms)*36e5)*36e5;
 const dayDiff=(a,b)=>Math.max(0,Math.round((new Date(a+"T12:00")-new Date(b+"T12:00"))/864e5));
 const move=(body,target,days)=>{const d=target-body;if(!d||!days)return body;const rate=d>0?1:1.5;return body+Math.sign(d)*Math.min(Math.abs(d),days*rate)};
+const arrivalOf=x=>{const n=x?.airports?.at(-1);return n&&Z[n]?n:null};
+
+/* Station is the location at the START of a roster day. A flight day's
+   report time belongs to the departure station, so the final airport in
+   that day's roster must only become current after that day. The previous
+   implementation applied the destination timezone immediately and could
+   shift an ALA→FRA recommendation by several hours. */
 function stateAt(day,days){
  const sorted=[...days].sort((a,b)=>a.date.localeCompare(b.date)),base=sorted[0]?.date||day.date;
  let station=home,bodyZone=off(Z[home],base),prev=base,stationSince=base,selectedIndex=-1;
@@ -31,18 +27,21 @@ function stateAt(day,days){
   const x=sorted[i];
   if(x.date>day.date)break;
   const gap=dayDiff(x.date,prev);
-  const nextChange=sorted.slice(i).find(y=>{const n=y.airports?.at(-1);return n&&Z[n]&&n!==station});
+  const nextChange=sorted.slice(i).find(y=>{const n=arrivalOf(y);return n&&n!==station});
   const shortAway=station!==home&&nextChange&&dayDiff(nextChange.date,stationSince)<=2;
   if(gap&&!shortAway)bodyZone=move(bodyZone,off(Z[station]||Z[home],x.date),gap);
-  const next=x.airports?.at(-1);if(next&&Z[next]&&next!==station){station=next;stationSince=x.date}
-  prev=x.date;
   selectedIndex=i;
+  if(x.date===day.date)break;
+  const next=arrivalOf(x);
+  if(next&&next!==station){station=next;stationSince=x.date}
+  prev=x.date;
  }
  const zone=Z[station]||Z[home],local=off(zone,day.date),homeOff=off(Z[home],day.date);
- const nextChange=sorted.slice(selectedIndex+1).find(y=>{const n=y.airports?.at(-1);return n&&Z[n]&&n!==station});
+ const nextChange=sorted.slice(Math.max(0,selectedIndex)).find(y=>{const n=arrivalOf(y);return n&&n!==station});
  const shortStay=station!==home&&nextChange&&dayDiff(nextChange.date,stationSince)<=2;
  return{station,zone,local,homeOff,bodyZone,body:bodyZone-local,delta:local-homeOff,adapted:bodyZone-homeOff,shortStay:!!shortStay};
 }
+
 const dutyTimes=day=>{if(!day||day.kind==="rest"||!day.times?.length)return{report:null,release:null};const a=day.times.map(t=>{const m=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(t);return m?+m[1]*60+ +m[2]:null}).filter(x=>x!=null);if(!a.length)return{report:null,release:null};let report=a[0],release=a[a.length-1];if(release<report)release+=1440;return{report,release}};
 function get(day,days,ctx,fast,opts={}){
  const st=stateAt(day,days),dest=st.station,zone=st.zone,body=st.body,delta=st.delta,kind=ctx==="auto"?(day?.kind||"rest"):ctx,h=24-fast,{report,release}=dutyTimes(day);
@@ -65,12 +64,6 @@ function get(day,days,ctx,fast,opts={}){
  start=clamp(Math.round(start),0,1439);
  return{zone,dest,delta,body,adapt:Math.abs(st.adapted),bodyZone:st.bodyZone,shortStay:st.shortStay,start,h,note,kind,away,hotel,bf:bf||null,report,release,dutyUsed:report!=null};
 }
-/* Оба конца окна переводятся независимо: одно смещение на сутки уводило
-   закрытие на час, если между открытием и закрытием переводят стрелки
-   (окно 23:00-07:00 в Лондоне становилось 23:00-08:00). Окно задано
-   местным стенным временем — от него зависят и report time, и завтрак,
-   и потолок 21:00 — поэтому в день перевода стрелок сохраняются
-   местные часы, а фактическая длительность окна разово меняется на час. */
 function instants(day,p){const base=Date.parse(day.date+"T00:00:00Z");return{from:zoned(p.zone,base+p.start*6e4),to:zoned(p.zone,base+(p.start+p.h*60)*6e4)}}
 const Circadian={get,Z,off,offAt,zoned,instants,stateAt};
 if(typeof module!=="undefined"&&module.exports)module.exports=Circadian;else window.Circadian=Circadian;
