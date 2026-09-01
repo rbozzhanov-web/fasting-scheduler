@@ -141,6 +141,71 @@ function patchActiveIcs(text,state){
   });
 }
 
+function installGoalControl(){
+  const select=document.querySelector("#goal");
+  if(!select||document.querySelector("#goalSeg"))return;
+  const row=select.closest(".row")||select.parentElement;
+  const label=row&&row.querySelector(".rl");
+  const hint=label&&label.querySelector("small");
+
+  /* Старый select остаётся источником истины для существующего index.js.
+     Визуально прячем его, но не удаляем: обработчик onchange продолжает
+     выполнять все пересчёты roster/ICS без дублирования бизнес-логики. */
+  Object.assign(select.style,{position:"absolute",opacity:"0",pointerEvents:"none",width:"1px",height:"1px",minWidth:"1px",padding:"0",border:"0"});
+  select.setAttribute("aria-hidden","true");
+  select.tabIndex=-1;
+
+  const seg=document.createElement("div");
+  seg.id="goalSeg";
+  seg.className="goal-seg";
+  seg.setAttribute("role","group");
+  seg.setAttribute("aria-label","Цель питания");
+  seg.innerHTML='<button type="button" data-goal="fat">Снижение</button><button type="button" data-goal="keep">Поддержание</button>';
+  select.insertAdjacentElement("afterend",seg);
+
+  const style=document.createElement("style");
+  style.textContent=`
+    .goal-seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;width:min(100%,310px);padding:4px;border-radius:22px;background:var(--sunken);border:1px solid var(--sunken-line);box-shadow:0 1px 0 rgba(255,255,255,.05) inset}
+    .goal-seg button{min-width:0;height:42px;border:0;border-radius:18px;background:transparent;color:var(--dim);font-weight:650;font-size:14px;white-space:nowrap;padding:0 12px;transition:background .18s ease,color .18s ease,box-shadow .18s ease,transform .12s ease}
+    .goal-seg button:active{transform:scale(.97)}
+    .goal-seg button.on{color:var(--text);background-color:var(--glass-control);background-image:var(--glass-spec);box-shadow:var(--glass-control-shadow)}
+    .goal-row{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:12px!important;align-items:start!important}
+    .goal-row .rl{width:100%;max-width:none}
+    .goal-row .rl small{display:block;max-width:34em;line-height:1.4;margin-top:4px}
+    .goal-row .goal-seg{justify-self:stretch;width:100%;max-width:none}
+    @media(max-width:430px){
+      .sheet-body{padding-left:16px!important;padding-right:16px!important}
+      .sheet .card{padding:14px!important}
+      .sheet .row>*{min-width:0}
+      .goal-seg button{font-size:13.5px;padding-inline:8px}
+    }
+  `;
+  document.head.appendChild(style);
+  if(row)row.classList.add("goal-row");
+
+  const render=()=>{
+    const value=select.value||readState().goal||"fat";
+    seg.querySelectorAll("button").forEach(b=>{
+      const on=b.dataset.goal===value;
+      b.classList.toggle("on",on);
+      b.setAttribute("aria-pressed",on?"true":"false");
+    });
+    if(hint)hint.textContent=value==="fat"
+      ?"Окно питания по возможности закрывается не позже 21:00."
+      :"Без жёсткого ограничения на закрытие окна в 21:00.";
+  };
+
+  seg.addEventListener("click",e=>{
+    const b=e.target.closest("[data-goal]");if(!b)return;
+    if(select.value===b.dataset.goal){render();return}
+    select.value=b.dataset.goal;
+    select.dispatchEvent(new Event("change",{bubbles:true}));
+    render();
+  });
+  select.addEventListener("change",render);
+  render();
+}
+
 function installBrowserGuards(){
   if(typeof window==="undefined"||typeof document==="undefined")return;
 
@@ -206,6 +271,7 @@ function installBrowserGuards(){
     const hdr=document.querySelector(".hdr");if(hdr)hdr.style.borderBottom="none";
     const fat=document.querySelector("#fat");if(fat)fat.removeAttribute("placeholder");
     const weight=document.querySelector("#weight");if(weight)weight.removeAttribute("placeholder");
+    installGoalControl();
 
     if(typeof window.fastEvents==="function"){
       window.fastEvents=function(){
