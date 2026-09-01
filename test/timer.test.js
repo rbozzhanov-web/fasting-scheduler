@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { dur, computeFastState, actionLabel, closeNotificationBody, validEarlyEnd, cycleEventTimes, patchActiveIcs } = require('../timer.js');
+const { dur, computeFastState, actionLabel, closeNotificationBody, validEarlyEnd, validActualEnd, cycleEventTimes, patchActiveIcs } = require('../timer.js');
 
 test('dur() formats a millisecond delta as HH:MM:SS', () => {
   assert.equal(dur(0), '00:00:00');
@@ -54,11 +54,23 @@ test('manual start entry uses the same phase logic', () => {
   assert.equal(r.phase, 'eat');
 });
 
-test('changing mode with the same fastStart re-derives the phase', () => {
+test('changing mode with the same fastStart re-derives the phase before completion', () => {
   const start = new Date('2026-03-10T20:00:00Z');
   const now = new Date('2026-03-11T09:00:00Z');
   assert.equal(computeFastState(start.toISOString(), '16', now).phase, 'fast');
   assert.equal(computeFastState(start.toISOString(), '12', now).phase, 'eat');
+});
+
+test('changing mode after completion preserves the factual fastEnd', () => {
+  const start = '2026-03-10T20:00:00.000Z';
+  const actualEnd = '2026-03-11T10:00:00.000Z'; // completed after 14h while previous target could have been 18h
+  const now = new Date('2026-03-11T10:30:00Z');
+  const r = computeFastState(start, '12', now, actualEnd);
+  assert.equal(r.phase, 'eat');
+  assert.equal(r.end.toISOString(), actualEnd);
+  assert.equal(r.actualFastMs, 14 * 3600e3);
+  assert.equal(r.eatEnd.toISOString(), '2026-03-11T22:00:00.000Z');
+  assert.equal(r.hasActualEnd, true);
 });
 
 test('midnight crossing does not disturb phase derivation', () => {
@@ -83,6 +95,7 @@ test('early completion immediately opens the eating window', () => {
   const r = computeFastState(start.toISOString(), '16', now, earlyEnd.toISOString());
   assert.equal(r.phase, 'eat');
   assert.equal(r.endedEarly, true);
+  assert.equal(r.hasActualEnd, true);
   assert.equal(r.actualFastMs, 12 * 3600e3);
   assert.equal(r.fastMs, 12 * 3600e3);
   assert.equal(r.end.toISOString(), earlyEnd.toISOString());
@@ -108,16 +121,17 @@ test('event times use the actual early end, not the nominal fasting end', () => 
   assert.equal(new Date(t.close).toISOString(), '2026-03-11T16:00:00.000Z');
   assert.equal(t.actualFastMs, 12 * 3600e3);
   assert.equal(t.endedEarly, true);
+  assert.equal(t.hasActualEnd, true);
 });
 
-test('event times remain nominal when there is no early completion', () => {
+test('event times remain nominal when there is no recorded completion', () => {
   const t = cycleEventTimes('2026-03-10T20:00:00.000Z', '16');
   assert.equal(new Date(t.open).toISOString(), '2026-03-11T12:00:00.000Z');
   assert.equal(new Date(t.close).toISOString(), '2026-03-11T20:00:00.000Z');
-  assert.equal(t.endedEarly, false);
+  assert.equal(t.hasActualEnd, false);
 });
 
-test('active calendar pair is moved to actual early open/close', () => {
+test('active calendar pair is moved to actual open/close', () => {
   const ics = [
     'BEGIN:VCALENDAR',
     'BEGIN:VEVENT',
@@ -148,7 +162,7 @@ test('active calendar pair is moved to actual early open/close', () => {
   }
 });
 
-test('expired early-finished active calendar pair is removed', () => {
+test('expired completed active calendar pair is removed', () => {
   const ics = 'BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:fw-active-open@fuelwindow\r\nDTSTART:20260311T120000Z\r\nDTEND:20260311T121500Z\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:fw-active-close@fuelwindow\r\nDTSTART:20260311T200000Z\r\nDTEND:20260311T201500Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n';
   const state = { fastStart: '2026-03-10T20:00:00.000Z', fastEnd: '2026-03-11T08:00:00.000Z', mode: '16' };
   const originalNow = Date.now;
@@ -162,15 +176,19 @@ test('expired early-finished active calendar pair is removed', () => {
   }
 });
 
-test('invalid or late fastEnd is ignored', () => {
+test('finish-now validation rejects a completion after the current nominal end', () => {
   const start = new Date('2026-03-10T20:00:00Z');
   const nominal = new Date('2026-03-11T12:00:00Z');
   assert.equal(validEarlyEnd(start, nominal, 'bad'), null);
   assert.equal(validEarlyEnd(start, nominal, '2026-03-10T19:00:00Z'), null);
   assert.equal(validEarlyEnd(start, nominal, '2026-03-11T13:00:00Z'), null);
-  const r = computeFastState(start.toISOString(), '16', new Date('2026-03-11T11:00:00Z'), '2026-03-11T13:00:00Z');
-  assert.equal(r.phase, 'fast');
-  assert.equal(r.endedEarly, false);
+});
+
+test('recorded factual fastEnd remains valid for up to one cycle day', () => {
+  const start = new Date('2026-03-10T20:00:00Z');
+  assert.equal(validActualEnd(start, '2026-03-11T13:00:00Z').toISOString(), '2026-03-11T13:00:00.000Z');
+  assert.equal(validActualEnd(start, '2026-03-11T20:00:00Z').toISOString(), '2026-03-11T20:00:00.000Z');
+  assert.equal(validActualEnd(start, '2026-03-11T20:00:01Z'), null);
 });
 
 test('active fast action is real completion now', () => {
