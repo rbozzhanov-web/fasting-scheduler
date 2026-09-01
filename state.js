@@ -73,6 +73,47 @@ function validateBackup(d){
   if(st.fastEnd!=null&&!validFastEnd(st.fastStart,st.mode,st.fastEnd))throw new Error("некорректное окончание голодания");
 }
 
-const State={MODES,CONTEXTS,GOALS,DATE_RE,isRealDate,isValidDay,isValidMetric,validFastEnd,normalizeState,validateBackup};
-if(typeof module!=="undefined"&&module.exports)module.exports=State;else window.State=State;
+/* Локальная календарная дата устройства, без UTC-сдвига. Она нужна для
+   автоматического выбора сегодняшнего roster-дня: toISOString() около
+   полуночи в некоторых поясах даёт соседнюю дату. */
+const localDay=d=>{
+  d=d||new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+};
+
+/* Выбираем сегодняшний roster через уже существующую кнопку дня. Так
+   index.html сам обновляет s.date, сбрасывает ручной context в auto,
+   сохраняет state и перерисовывает карточку — второго источника состояния
+   здесь не появляется. Ручной просмотр другого дня в течение тех же суток
+   не сбрасываем; автопереход срабатывает один раз при запуске/импорте и
+   снова только после смены календарной даты. */
+function installRosterTodaySync(){
+  if(typeof document==="undefined")return;
+  let seenDay=null,syncedDay=null,timer=null,observer=null;
+  const sync=force=>{
+    const t=localDay(),changed=seenDay!==null&&seenDay!==t;
+    seenDay=t;
+    if(!force&&!changed&&syncedDay===t)return false;
+    const button=[...document.querySelectorAll("#days [data-d]")].find(b=>b.dataset.d===t);
+    if(!button)return false;
+    if(!button.classList.contains("on"))button.click();
+    syncedDay=t;
+    return true;
+  };
+  const start=()=>{
+    setTimeout(()=>sync(true),0);
+    const days=document.querySelector("#days");
+    if(days&&typeof MutationObserver!=="undefined"){
+      observer=new MutationObserver(()=>{if(syncedDay!==localDay())sync(false)});
+      observer.observe(days,{childList:true});
+    }
+    timer=setInterval(()=>sync(false),30000);
+  };
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)sync(false)});
+  return()=>{if(timer)clearInterval(timer);if(observer)observer.disconnect()};
+}
+
+const State={MODES,CONTEXTS,GOALS,DATE_RE,isRealDate,isValidDay,isValidMetric,validFastEnd,normalizeState,validateBackup,localDay};
+if(typeof module!=="undefined"&&module.exports)module.exports=State;else{window.State=State;installRosterTodaySync()}
 })();
