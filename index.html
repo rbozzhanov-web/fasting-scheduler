@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#f2f3ec" media="(prefers-color-scheme:light)">
+<meta name="theme-color" content="#f0f2f6" media="(prefers-color-scheme:light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme:dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon.svg">
@@ -15,38 +15,38 @@
 /* ---------- tokens ---------- */
 :root{
   color-scheme:light dark;
-  --bg:#f2f3ec; --bg-blur:rgba(242,243,236,.8);
-  --surface:#fff; --surface-2:#edefe6; --surface-3:#e2e6d6;
-  --text:#1b2013; --dim:#6b705e; --line:#e3e6da;
-  --accent:#556139; --on-accent:#fff; --on-accent-dim:rgba(255,255,255,.88);
-  --accent-ink:#454f2e; --accent-soft:#e7edd8;
-  --act:#37421f; --on-act:#eff2e5; --eat:#8f4718; --red:#a33a24;
-  --good-bg:#e2edd6; --good-fg:#41682c;
-  --bad-bg:#f6e4de; --bad-fg:#9b3d26;
-  --warn-bg:#f6eedc; --warn-fg:#7a5716;
-  --hero-a:#b7c29a; --hero-b:#96a672;
-  --on-hero:#1e2410; --on-hero-dim:#354020;
-  --veil:rgba(30,36,16,.13); --veil-2:rgba(30,36,16,.22); --veil-line:rgba(30,36,16,.16);
-  --track:rgba(255,255,255,.30); --zone:rgba(200,130,63,.54); --pick:0;
-  --k-rest:#3f6a30; --k-duty:#446f8c; --k-early:#8e5a12; --k-night:#6a5c99;
+  --bg:#f0f2f6; --bg-blur:rgba(240,242,246,.8);
+  --surface:#fff; --surface-2:#e9ecf2; --surface-3:#dde2ea;
+  --text:#111722; --dim:#666e7d; --line:#e2e6ed;
+  --accent:#1f5288; --on-accent:#fff; --on-accent-dim:rgba(255,255,255,.85);
+  --accent-ink:#1a4676; --accent-soft:#e3ecf7;
+  --act:#c2e0f9; --on-act:#0e2743; --eat:#f2a93e; --red:#c0392b;
+  --good-bg:#e2f0e7; --good-fg:#1d6b43;
+  --bad-bg:#fbe6e3; --bad-fg:#b03a2b;
+  --warn-bg:#fdf1e0; --warn-fg:#8a5a12;
+  --hero-a:#1f4478; --hero-b:#102743;
+  --on-hero:#fff; --on-hero-dim:#a9c4e2;
+  --veil:rgba(255,255,255,.14); --veil-2:rgba(255,255,255,.24); --veil-line:rgba(255,255,255,.15);
+  --track:rgba(255,255,255,.10); --zone:rgba(242,169,62,.46); --pick:1;
+  --k-rest:#2f7d52; --k-duty:#3d6f9e; --k-early:#9a5f11; --k-night:#6a5ca8;
   --r:22px;
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
 }
 @media(prefers-color-scheme:dark){:root{
   --bg:#000; --bg-blur:rgba(0,0,0,.72);
-  --surface:#151711; --surface-2:#232619; --surface-3:#2e3222;
-  --text:#f1f3ea; --dim:#93998a; --line:#262a1c;
-  --accent:#a9b689; --on-accent:#1a1f10; --on-accent-dim:rgba(26,31,16,.78);
-  --accent-ink:#bcc9a0; --accent-soft:#242b18;
-  --act:#a9b689; --on-act:#1a1f10; --eat:#efae6e; --red:#ff8f80;
-  --good-bg:#1d2f16; --good-fg:#9ed277;
+  --surface:#131519; --surface-2:#1f232a; --surface-3:#2a2f38;
+  --text:#eff2f7; --dim:#8c94a1; --line:#232830;
+  --accent:#6fa8e0; --on-accent:#0b1723; --on-accent-dim:rgba(11,23,35,.75);
+  --accent-ink:#93c2f0; --accent-soft:#16283c;
+  --act:#c2e0f9; --on-act:#0e2743; --eat:#f2a93e; --red:#ff8f80;
+  --good-bg:#13301f; --good-fg:#6fd39a;
   --bad-bg:#3a201c; --bad-fg:#ff9c8c;
-  --warn-bg:#2b2418; --warn-fg:#e6b877;
-  --hero-a:#3c4729; --hero-b:#1c2214;
-  --on-hero:#edf1e2; --on-hero-dim:#a9b689;
-  --k-rest:#8cc978; --k-duty:#86b8d6; --k-early:#e3ae62; --k-night:#b0a5de;
+  --warn-bg:#2b2417; --warn-fg:#e8b86b;
+  --hero-a:#1a3654; --hero-b:#0a1727;
+  --on-hero:#f2f6fb; --on-hero-dim:#93b4d6;
+  --k-rest:#5cc48c; --k-duty:#7db4e6; --k-early:#e8b05a; --k-night:#a79ae0;
   --veil:rgba(255,255,255,.14); --veil-2:rgba(255,255,255,.24); --veil-line:rgba(255,255,255,.14);
-  --track:rgba(255,255,255,.20); --zone:rgba(42,27,8,.40); --pick:1;
+  --track:rgba(255,255,255,.12); --zone:rgba(242,169,62,.44); --pick:1;
 }}
 
 /* ---------- base ---------- */
@@ -72,7 +72,7 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 @media(prefers-color-scheme:dark){.card{box-shadow:none;border:1px solid var(--line)}}
 
 /* ---------- hero: fasting ---------- */
-.hero{background:linear-gradient(158deg,var(--hero-a),var(--hero-b));color:var(--on-hero);border-radius:26px;padding:14px;box-shadow:0 14px 32px rgba(45,56,26,.22)}
+.hero{background:linear-gradient(158deg,var(--hero-a),var(--hero-b));color:var(--on-hero);border-radius:26px;padding:14px;box-shadow:0 14px 32px rgba(12,32,58,.30)}
 .hero-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .eyebrow{font-size:11px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--on-hero-dim)}
 .hpill{font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;background:var(--veil);color:var(--on-hero)}
@@ -179,7 +179,7 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 /* ---------- update banner ---------- */
 .update{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);max-width:608px;margin:0 auto;background:#1c1c1e;color:#fff;border-radius:18px;padding:12px 12px 12px 16px;display:none;align-items:center;justify-content:space-between;gap:12px;z-index:30;box-shadow:0 12px 30px rgba(0,0,0,.35)}
 .update.show{display:flex}
-.update button{background:#a9b689;color:#1a1f10;border:0;border-radius:11px;padding:9px 14px;font-weight:650;min-height:40px}
+.update button{background:#c2e0f9;color:#0e2743;border:0;border-radius:11px;padding:9px 14px;font-weight:650;min-height:40px}
 
 @media(max-width:400px){
   .day{width:66px}
