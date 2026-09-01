@@ -68,14 +68,14 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .eyebrow{font-size:11px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--on-hero-dim)}
 .hpill{font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;background:rgba(255,255,255,.16);color:#fff}
 
-.ring{position:relative;width:min(228px,62vw);aspect-ratio:1;margin:10px auto 2px}
-.ring svg{width:100%;height:100%;transform:rotate(-90deg);display:block}
-.ring .track{fill:none;stroke:rgba(255,255,255,.15);stroke-width:8}
-.ring .bar{fill:none;stroke:var(--amber);stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .5s ease,stroke .3s ease}
-.ring.eat .bar{stroke:var(--green)}
-.ring .mid{position:absolute;inset:0;display:grid;align-content:center;justify-items:center;gap:6px;text-align:center;padding:0 22px}
-.ring strong{font-size:clamp(32px,9.5vw,40px);font-weight:750;letter-spacing:-1.2px;font-variant-numeric:tabular-nums;line-height:1}
-.ring small{font-size:13px;color:var(--on-hero-dim);line-height:1.3}
+.tmrow{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:12px}
+.tmrow strong{font-size:clamp(30px,8.6vw,38px);font-weight:750;letter-spacing:-1.2px;font-variant-numeric:tabular-nums;line-height:1}
+.tmrow small{font-size:13px;color:var(--on-hero-dim);text-align:right;min-width:0}
+.cyc{position:relative;height:10px;border-radius:99px;background:rgba(255,255,255,.17);overflow:hidden;margin-top:14px}
+.cyc-eat{position:absolute;top:0;bottom:0;right:0;background:rgba(47,163,107,.42)}
+.cyc-fill{position:absolute;top:0;bottom:0;left:0;border-radius:99px;background:var(--amber);transition:width .5s ease,background .3s ease}
+.cyc.eat .cyc-fill{background:var(--green)}
+.cyclab{display:flex;justify-content:space-between;gap:10px;margin-top:7px;font-size:11px;font-weight:650;letter-spacing:.3px;color:var(--on-hero-dim)}
 
 .hmeta{display:flex;justify-content:space-between;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.14)}
 .hmeta div{display:grid;gap:3px;min-width:0}
@@ -93,7 +93,10 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 /* ---------- buttons ---------- */
 .btn{border:0;border-radius:14px;padding:13px 16px;min-height:48px;font-weight:650;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s ease,opacity .15s}
 .btn:active{transform:scale(.985)}
-.btn-amber{width:100%;margin-top:14px;background:var(--amber);color:#22200f}
+.btn-amber{width:100%;background:var(--amber);color:#22200f}
+.acts{display:flex;gap:8px;margin-top:14px}
+.acts .btn-amber{flex:1 1 auto}
+.acts .btn-ghost{flex:0 0 auto;font-size:14px}
 .btn-blue{width:100%;margin-top:14px;background:var(--blue);color:#fff}
 .btn-ghost{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.24)}
 .btn-quiet{background:var(--surface-2);color:var(--text)}
@@ -202,16 +205,16 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
       <span class="hpill" id="fastModePill">16:8</span>
     </div>
 
-    <div class="ring" id="ring">
-      <svg viewBox="0 0 120 120" aria-hidden="true">
-        <circle class="track" cx="60" cy="60" r="52"></circle>
-        <circle class="bar" id="bar" cx="60" cy="60" r="52"></circle>
-      </svg>
-      <div class="mid">
-        <strong id="timer">—</strong>
-        <small id="fastSub">Не запущено</small>
-      </div>
+    <div class="tmrow">
+      <strong id="timer">—</strong>
+      <small id="fastSub">Не запущено</small>
     </div>
+
+    <div class="cyc" id="cyc">
+      <div class="cyc-eat" id="cycEat"></div>
+      <div class="cyc-fill" id="cycFill"></div>
+    </div>
+    <div class="cyclab"><span id="labFast">Голодание</span><span id="labEat">Окно питания</span></div>
 
     <div class="hmeta" id="hmeta">
       <div><span>Начало</span><b id="started">—</b></div>
@@ -221,31 +224,21 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
     <p class="tzline" id="tzLine"></p>
     <p class="tznote" id="tzNote" hidden></p>
 
-    <button id="fastBtn" class="btn btn-amber">Начать голодание</button>
-    <button id="editStart" class="btn btn-link">Указать другое время начала</button>
+    <div class="acts">
+      <button id="fastBtn" class="btn btn-amber">Начать</button>
+      <button id="editStart" class="btn btn-ghost">Другое время</button>
+    </div>
     <div class="startrow" id="startWrap" hidden>
       <input id="startAt" type="datetime-local" aria-label="Время начала голодания">
       <button id="applyStart" class="btn btn-ghost mini">ОК</button>
     </div>
 
-    <div class="seg" id="modeSeg">
-      <button data-m="12">12:12</button>
-      <button data-m="14">14:10</button>
-      <button data-m="16">16:8</button>
-      <button data-m="18">18:6</button>
-    </div>
   </section>
 
   <p class="slabel">План по roster</p>
   <section class="card">
     <div class="days" id="days"></div>
     <p class="empty" id="daysEmpty">Импортируй PDF roster в настройках — появятся дни, duty и прогноз окна питания.</p>
-
-    <div class="seg" id="ctxSeg">
-      <button data-x="auto">По roster</button>
-      <button data-x="training">Тренировка</button>
-      <button data-x="recovery">Восстановление</button>
-    </div>
 
     <div id="dayBox" hidden>
       <p class="daytitle" id="dayTitle">—</p>
@@ -255,6 +248,11 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
       <p class="winphone" id="winPhone" hidden></p>
       <p class="hotelrow" id="hotelRow" hidden></p>
       <div class="stats" id="stats"></div>
+      <div class="seg" id="ctxSeg">
+        <button data-x="auto">По roster</button>
+        <button data-x="training">Тренировка</button>
+        <button data-x="recovery">Восстановление</button>
+      </div>
       <p class="note" id="note" hidden></p>
     </div>
   </section>
@@ -273,6 +271,15 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 
   <p class="slabel">Настройки</p>
   <section class="card">
+    <label class="row">
+      <span class="rl">Интервал голодания<small>Часы голодания и часы окна питания</small></span>
+      <select id="mode">
+        <option value="12">12:12</option>
+        <option value="14">14:10</option>
+        <option value="16">16:8</option>
+        <option value="18">18:6</option>
+      </select>
+    </label>
     <label class="row">
       <span class="rl">Roster PDF<small id="status">Файл не выбран</small></span>
       <span class="btn btn-quiet mini">Выбрать<input id="pdf" type="file" accept="application/pdf" hidden></span>
@@ -347,7 +354,6 @@ function drawHeader(){
 }
 
 /* ---------- fasting ring ---------- */
-const R=52,CIRC=2*Math.PI*R;
 function drawFast(){
   const start=s.fastStart?new Date(s.fastStart):null,now=new Date();
   const fastMs=+s.mode*36e5,eatMs=(24-+s.mode)*36e5;
@@ -364,20 +370,20 @@ function drawFast(){
     pct=(now-start)/fastMs*100;
     q("#fastPhase").textContent="До окна питания";
     q("#timer").textContent=dur(end-now);
-    q("#fastSub").textContent=Math.floor(pct)+"% голодания пройдено";
+    q("#fastSub").textContent=Math.floor(pct)+"% голодания";
     q("#endLabel").textContent="Окно питания в";
     q("#ends").textContent=clock(end);
   }else if(phase==="eat"){
     pct=(now-end)/eatMs*100;
     q("#fastPhase").textContent="Окно питания открыто";
     q("#timer").textContent=dur(eatEnd-now);
-    q("#fastSub").textContent="До закрытия окна";
+    q("#fastSub").textContent=Math.floor(pct)+"% окна";
     q("#endLabel").textContent="Окно закроется";
     q("#ends").textContent=clock(eatEnd);
   }else if(phase==="over"){
     q("#fastPhase").textContent="Окно закрыто";
     q("#timer").textContent=s.mode+":"+(24-s.mode);
-    q("#fastSub").textContent="Пора начать новое голодание";
+    q("#fastSub").textContent="Пора начать новое";
     q("#endLabel").textContent="Окно закрылось";
     q("#ends").textContent=stamp(eatEnd);
   }else{
@@ -406,12 +412,16 @@ function drawFast(){
       (shift<0?"−":"+")+(Number.isInteger(h)?h:h.toFixed(1))+" ч. Окно питания по новому времени: "+
       (end?clock(end):"—")+".";
   }
-  q("#ring").classList.toggle("eat",phase==="eat");
-  pct=Math.max(0,Math.min(100,pct));
-  const bar=q("#bar");
-  bar.style.strokeDasharray=CIRC;
-  bar.style.strokeDashoffset=CIRC*(1-pct/100);
-  q("#fastBtn").textContent=phase==="fast"?"Завершить голодание":"Начать голодание";
+  /* Шкала суток: слева часы голодания, справа окно питания.
+     Заливка показывает, где вы сейчас внутри этого цикла. */
+  const cycleMs=fastMs+eatMs,split=fastMs/cycleMs*100;
+  const done=start?Math.max(0,Math.min(cycleMs,now-start))/cycleMs*100:0;
+  q("#cyc").classList.toggle("eat",phase==="eat");
+  q("#cycEat").style.width=(100-split)+"%";
+  q("#cycFill").style.width=done+"%";
+  q("#labFast").textContent="Голодание "+s.mode+" ч";
+  q("#labEat").textContent="Окно "+(24-s.mode)+" ч";
+  q("#fastBtn").textContent=phase==="fast"?"Завершить":"Начать голодание";
 }
 
 /* ---------- roster day ---------- */
@@ -431,10 +441,8 @@ function drawDay(){
   if(on)box.scrollLeft=on.offsetLeft-(box.clientWidth-on.offsetWidth)/2;
 
   document.querySelectorAll("#ctxSeg button").forEach(b=>b.classList.toggle("on",b.dataset.x===s.context));
-  document.querySelectorAll("#modeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.m===s.mode));
 
   const d=s.days.find(x=>x.date===s.date),p=d?Circadian.get(d,s.days,s.context,+s.mode,bfOpts()):null;
-  q("#ctxSeg").hidden=!has;
   q("#dayBox").hidden=!p;
   if(!p)return;
   const from=hm(p.start),to=hm(p.start+p.h*60);
@@ -501,10 +509,7 @@ q("#applyStart").onclick=()=>{
   s.fastTz=devZone();s.fastTzOff=devOff();
   q("#startWrap").hidden=true;save();drawFast();
 };
-q("#modeSeg").onclick=e=>{
-  const b=e.target.closest("[data-m]");if(!b)return;
-  s.mode=b.dataset.m;save();drawDay();drawFast();
-};
+q("#mode").onchange=e=>{s.mode=e.target.value;save();drawDay();drawFast()};
 q("#ctxSeg").onclick=e=>{
   const b=e.target.closest("[data-x]");if(!b)return;
   s.context=b.dataset.x;save();drawDay();
@@ -546,7 +551,7 @@ function drawStatus(){
   q("#status").textContent=s.file?s.file.name+" · "+s.file.count+" дней":s.days.length?s.days.length+" дней импортировано":"Файл не выбран";
 }
 
-q("#goal").value=s.goal;
+q("#mode").value=s.mode;q("#goal").value=s.goal;
 q("#bfOn").checked=!!s.bf.on;q("#bfFrom").value=s.bf.from;q("#bfTo").value=s.bf.to;q("#bfTimes").hidden=!s.bf.on;
 drawStatus();drawAll();
 setInterval(drawFast,1000);
