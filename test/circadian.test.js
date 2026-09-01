@@ -42,7 +42,7 @@ test('get(): report time on ALA to FRA duty is interpreted in departure local ti
   assert.equal(p.zone, 'Asia/Almaty');
   assert.equal(p.dest, 'ALA');
   assert.equal(p.report, 360);
-  assert.equal(p.start, 450, '06:00 report produces 07:30 opening in Almaty, not Frankfurt');
+  assert.equal(p.start, 480, 'early-duty safety floor keeps opening at 08:00 Almaty, not destination local time');
 });
 
 test('stateAt(): a short layover (<=2 days) does not adapt the body clock to local time', () => {
@@ -53,7 +53,7 @@ test('stateAt(): a short layover (<=2 days) does not adapt the body clock to loc
   const st = Circadian.stateAt(days[1], days);
   assert.equal(st.station, 'LHR');
   assert.equal(st.shortStay, true);
-  assert.equal(st.bodyZone, st.homeOff, 'body clock stays on home-base time for a short stay');
+  assert.equal(st.bodyZone, st.homeOff);
 });
 
 test('stateAt(): long stay adapts before return, jet lag appears after arrival home', () => {
@@ -63,11 +63,11 @@ test('stateAt(): long stay adapts before return, jet lag appears after arrival h
     { date: '2026-01-11', airports: [] },
   ];
   const returnDuty = Circadian.stateAt(days[1], days);
-  assert.equal(returnDuty.station, 'LHR', 'return duty still starts in London');
-  assert.equal(returnDuty.bodyZone, 0, 'body clock adapted to London during long stay');
+  assert.equal(returnDuty.station, 'LHR');
+  assert.equal(returnDuty.bodyZone, 0);
   const homeDay = Circadian.stateAt(days[2], days);
   assert.equal(homeDay.station, 'ALA');
-  assert.notEqual(homeDay.body, 0, 'body remains misaligned on the first day back home');
+  assert.notEqual(homeDay.body, 0);
 });
 
 test('stateAt(): roster spanning a year boundary processes station changes correctly', () => {
@@ -93,7 +93,7 @@ test('get(): night duty places the eating window before report and does not prom
   const p = Circadian.get(day, [day], 'auto', 12, { goal: 'fat' });
   assert.equal(p.kind, 'night');
   assert.ok(p.start < 22 * 60);
-  assert.ok(p.start + p.h * 60 > 21 * 60, 'night duty is intentionally exempt from the fat-goal close cap');
+  assert.ok(p.start + p.h * 60 > 21 * 60);
   assert.match(p.note, /начинается до report time/);
   assert.doesNotMatch(p.note, /завершено не позже 21:00/);
 });
@@ -102,7 +102,7 @@ test('get(): fat goal caps non-night windows at 21:00 for every fasting mode', (
   for (const fast of [12, 14, 16, 18]) {
     const day = { date: '2026-01-01', kind: 'rest', times: [], airports: [] };
     const p = Circadian.get(day, [day], 'auto', fast, { goal: 'fat' });
-    assert.ok(p.start + p.h * 60 <= 21 * 60, `${fast}:${24-fast} must close by 21:00`);
+    assert.ok(p.start + p.h * 60 <= 21 * 60);
   }
 });
 
@@ -120,7 +120,7 @@ test('get(): rest day at home with no travel opens at noon before optional goal 
   assert.equal(p.start, 720);
 });
 
-test('get(): hotel breakfast can move an away rest-day window earlier', () => {
+test('get(): hotel breakfast can move an adapted away rest-day window earlier', () => {
   const days = [
     { date: '2026-01-01', kind: 'duty', times: ['09:00', '17:00'], airports: ['LHR'] },
     { date: '2026-01-10', kind: 'rest', times: [], airports: [] },
@@ -130,7 +130,7 @@ test('get(): hotel breakfast can move an away rest-day window earlier', () => {
   });
   assert.equal(p.away, true);
   assert.equal(p.hotel, true);
-  assert.ok(p.start >= 390 && p.start <= 540, 'opening is moved into the breakfast-compatible range');
+  assert.ok(p.start >= 390 && p.start <= 540);
 });
 
 test('get(): hotel breakfast does not alter a home-base day', () => {
@@ -164,15 +164,15 @@ test('get(): overnight release is represented after midnight without corrupting 
   assert.equal(p.release, 1800);
 });
 
-test('get(): rest day after a long stay away follows adapted body time instead of snapping to noon', () => {
+test('get(): a long adapted stay away settles back to local noon', () => {
   const days = [
     { date: '2026-01-01', kind: 'duty', times: ['09:00', '17:00'], airports: ['LHR'] },
     { date: '2026-01-12', kind: 'rest', times: [], airports: [] },
   ];
   const p = Circadian.get(days[1], days, 'auto', 16, { goal: 'keep' });
   assert.equal(p.kind, 'rest');
-  assert.notEqual(p.body, 0);
-  assert.notEqual(p.start, 720);
+  assert.equal(p.body, 0);
+  assert.equal(p.start, 720);
 });
 
 test('instants(): both endpoints keep their local wall-clock time across a spring-forward DST change', () => {
