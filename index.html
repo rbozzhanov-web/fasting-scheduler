@@ -1,1 +1,495 @@
-<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="theme-color" content="#f2f2f7"><link rel="manifest" href="manifest.webmanifest"><title>Fuel Window</title><style>:root{color-scheme:light dark;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif;background:#f2f2f7;color:#151515;-webkit-text-size-adjust:100%;touch-action:manipulation}*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#f2f2f7}body:before{content:"";position:fixed;z-index:20;pointer-events:none;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:#f2f2f7}.app{max-width:760px;margin:auto;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px calc(env(safe-area-inset-bottom,0px) + 32px)}.top,.row{display:flex;justify-content:space-between;gap:12px;align-items:center}.top{margin-bottom:4px}h1{font-size:34px;line-height:1.05;letter-spacing:-1.2px;margin:5px 0}h2{font-size:18px;margin:0;letter-spacing:-.2px}.card{background:#fff;border-radius:22px;padding:15px;margin-top:12px;box-shadow:0 8px 22px #0000000d}.hero{background:linear-gradient(135deg,#1c725f,#103d38);color:white;min-height:154px}.eyebrow,.muted{font-size:13px;color:#74757c}.hero .muted{color:#cfebe1}.pill{font-size:12px;padding:7px 9px;border-radius:99px;color:#166352;background:#d8f5ea;white-space:nowrap}.forecast{font-size:clamp(32px,11vw,44px);line-height:1.08;font-weight:750;letter-spacing:-1px;margin:10px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}label{font-size:13px;font-weight:650;color:#6b6c72;display:grid;gap:6px;margin-top:11px}input,select,button{font:inherit}input,select{width:100%;border:0;border-radius:12px;padding:11px;background:#f3f3f6;color:inherit}button{border:0;border-radius:13px;padding:10px 12px;font-weight:700}.days,.chips{display:flex;gap:8px;overflow-x:auto;overscroll-behavior-x:contain;padding:5px 0;-webkit-overflow-scrolling:touch}.day,.chip{white-space:nowrap;background:#e8e8ed;color:#3a3a3d;margin:0}.day{min-width:92px;padding:9px 10px;line-height:1.25;text-align:left}.selected,.active{background:#1c725f!important;color:white!important}.detail,.note{border-radius:14px;padding:12px;line-height:1.42;font-size:14px}.detail{background:#f0f8f4}.note{background:#fff6ed;border-left:4px solid #ff9f0a}.primary{background:#007aff;color:white;width:100%;margin-top:13px}.update{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);left:16px;right:16px;max-width:728px;margin:auto;background:#1c1c1e;color:#fff;padding:14px;border-radius:18px;display:none;z-index:30}.update button{float:right;background:#0a84ff;color:white;padding:7px 11px}@media(prefers-color-scheme:dark){:root,html,body{background:#000;color:#f5f5f7}body:before{background:#000}.card{background:#1c1c1e;box-shadow:none}.hero{background:linear-gradient(135deg,#176d5a,#092d2b)}input,select{background:#2c2c2e}.day,.chip{background:#303035;color:#f5f5f7}.detail{background:#16352d}.note{background:#33291c}.pill{background:#153d33;color:#9ce8d0}.eyebrow,.muted,label{color:#a5a5ab}}@media(max-width:460px){.grid{grid-template-columns:1fr}.top{align-items:flex-start}.hero{min-height:146px}}.fast{background:linear-gradient(145deg,#103f39,#176b5a);color:#fff}.fast .eyebrow,.fast .muted{color:#cfeae0}.ring{position:relative;--p:0;inline-size:208px;block-size:208px;margin:10px auto 12px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#e8b550 calc(var(--p)*1%),#ffffff2e 0)}.ring:before{content:"";position:absolute;inline-size:180px;block-size:180px;border-radius:50%;background:#124b42}.ring>div{position:relative;z-index:1;text-align:center;display:grid;gap:5px}.ring strong{font-size:34px;letter-spacing:-1px}.ring small{color:#cfeae0}.fastmeta{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:#cfeae0}.fastmeta span{min-width:0;display:grid;gap:4px}.fastmeta b{color:#fff;font-size:15px;white-space:nowrap}.fastactions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.fastactions button{min-width:0}.fastprimary{background:#f1b94f;color:#193a34}.fastactions button:not(.fastprimary){background:#ffffff22;color:#fff;border:1px solid #ffffff38}.fast input{margin-top:9px;background:#ffffff15;color:#fff}.fast input::-webkit-calendar-picker-indicator{filter:invert(1)}@media(max-width:360px){.ring{inline-size:188px;block-size:188px}.ring:before{inline-size:162px;block-size:162px}.ring strong{font-size:30px}}</style><body><main class="app"><header class="top"><div><span class="eyebrow">PRIVATE CREW NUTRITION</span><h1>Fuel Window</h1></div><span class="pill">PDF локально</span></header><section class="fast card"><div class="row"><span class="eyebrow">ТЕКУЩЕЕ ГОЛОДАНИЕ</span><span id="fastMode" class="pill">16:8</span></div><div class="ring" id="ring"><div><span id="fastLabel" class="muted">Готов начать</span><strong id="timer">—</strong><small id="fastPercent">Выбери момент старта</small></div></div><div class="fastmeta"><span>Начало <b id="started">—</b></span><span>Окончание <b id="ends">—</b></span></div><div class="fastactions"><button id="fastBtn" class="fastprimary">Начать сейчас</button><button id="applyStart">Задать время</button></div><input id="startAt" type="datetime-local" aria-label="Время начала голодания"></section><section class="card"><h2>Прогноз по дням</h2><p class="muted">Нажми на день — прогноз меняется здесь, без перехода наверх.</p><div id="days" class="days"></div><section id="forecast" class="hero card"><span id="title" class="eyebrow">Выбери день</span><div id="window" class="forecast">—</div><span id="meta" class="muted"></span></section><div id="detail" class="detail">Загрузи roster, чтобы увидеть duty, местное время и время тела.</div></section><section class="card"><h2>Режим и цель</h2><div class="grid"><label>Голодание<select id="mode"><option value="12">12:12</option><option value="14">14:10</option><option value="16">16:8</option><option value="18">18:6</option></select></label><label>Цель<select id="goal"><option value="fat">Снижение висцерального и общего жира</option><option>Поддержание веса</option></select></label></div></section><section class="card"><h2>Air Astana roster</h2><input id="pdf" type="file" accept="application/pdf"><p id="status" class="muted">Файл распознаётся и хранится только на iPhone.</p></section><section class="card"><h2>Контекст дня</h2><div id="context" class="chips"><button data-x="auto" class="chip active">По roster</button><button data-x="training" class="chip">Тренировка</button><button data-x="recovery" class="chip">Восстановление</button></div><p id="note" class="note"></p></section><section class="card"><div class="row"><h2>Body composition</h2><button id="clear">Удалить данные</button></div><div class="grid"><label>Процент жира<input id="fat" type="number" step=".1"></label><label>Вес, кг<input id="weight" type="number" step=".1"></label></div><button id="metric" class="primary">Сохранить измерение</button><p id="trend" class="muted"></p></section></main><div id="update" class="update">Доступно обновление <button>Обновить</button></div><script src="roster-parser.js"></script><script src="circadian.js"></script><script>const q=s=>document.querySelector(s),K="fuel-v4";let s=JSON.parse(localStorage.getItem(K)||"{}");Object.assign(s,{mode:s.mode||"16",context:s.context||"auto",days:s.days||[],metrics:s.metrics||[]});const f=n=>String(Math.floor((n%1440+1440)%1440/60)).padStart(2,"0")+":"+String((n%60+60)%60).padStart(2,"0"),dt=d=>new Date(d+"T12:00").toLocaleDateString("ru-KZ",{day:"numeric",month:"short",weekday:"short"});const save=()=>localStorage.setItem(K,JSON.stringify(s));function draw(){q("#mode").value=s.mode;let d=s.days.find(x=>x.date===s.date),p=d?Circadian.get(d,s.days,s.context,+s.mode):null;q("#days").innerHTML=s.days.map(x=>'<button class="day '+(x.date===s.date?"selected":"")+'" data-d="'+x.date+'">'+dt(x.date)+'<br><small>'+x.code+'</small></button>').join("")||"<span class=muted>После импорта появятся дни.</span>";document.querySelectorAll("#context button").forEach(x=>x.classList.toggle("active",x.dataset.x===s.context));q("#title").textContent=d?dt(d.date):"Выбери день";q("#window").textContent=p?f(p.start)+"–"+f(p.start+p.h*60):"—";q("#meta").textContent=p?p.h+" ч питания · "+s.mode+" ч голодания · "+p.dest:"";q("#detail").innerHTML=p?'<b>'+d.code+' · '+(d.times.join(" → ")||"время не указано")+'</b><br><span class=muted>Местный пояс: '+p.zone+' · время тела: '+(p.body>0?"+":"")+p.body.toFixed(1)+" ч · адаптация: "+p.adapt.toFixed(1)+" ч</span>":(s.days.length?"Выбери день выше.":"Загрузи roster, чтобы увидеть duty, местное время и время тела.");const note=q("#note");note.textContent=p?p.note:"";note.hidden=!p;let m=s.metrics;if(m.length){let a=m[0].fat,b=m.at(-1).fat;q("#trend").textContent=m.length===1?"Последнее: "+b.toFixed(1)+"%":"Тренд: "+(b-a).toFixed(1)+" п.п."}}function drawFast(){const start=s.fastStart?new Date(s.fastStart):null,now=new Date(),hours=+s.mode,end=start?new Date(start.getTime()+hours*36e5):null,remain=end?end-now:null,active=!!start&&remain>0,pct=start?Math.max(0,Math.min(100,((now-start)/(hours*36e5))*100)):0,fmt=x=>x.toLocaleString("ru-KZ",{hour:"2-digit",minute:"2-digit",day:"numeric",month:"short"});q("#fastMode").textContent=s.mode+":"+(24-s.mode);q("#ring").style.setProperty("--p",pct);q("#fastLabel").textContent=active?"До окна питания":start?"Окно питания открыто":"Готов начать";q("#timer").textContent=active?[remain/36e5,remain/6e4%60,remain/1e3%60].map((x,i)=>String(Math.floor(x)).padStart(2,"0")).join(":"):start?"Можно есть":"—";q("#fastPercent").textContent=start?(active?Math.floor(pct)+"% пройдено":"Режим "+s.mode+":"+(24-s.mode)):"Ручной старт или сейчас";q("#started").textContent=start?fmt(start):"—";q("#ends").textContent=end?fmt(end):"—";q("#fastBtn").textContent=start?"Завершить":"Начать сейчас";q("#startAt").value=start?new Date(start.getTime()-start.getTimezoneOffset()*60000).toISOString().slice(0,16):""}q("#fastBtn").onclick=()=>{if(s.fastStart){delete s.fastStart}else{s.fastStart=new Date().toISOString()}save();drawFast()};q("#applyStart").onclick=()=>{let v=q("#startAt").value;if(v){s.fastStart=new Date(v).toISOString();save();drawFast()}else q("#startAt").focus()};q("#pdf").onchange=async e=>{let file=e.target.files[0];if(!file)return;q("#status").textContent="Разбираю PDF на устройстве…";try{s.days=await FuelParser.parse(file);s.date=s.days[0].date;let r=indexedDB.open("fuel-pdf",1);r.onupgradeneeded=()=>r.result.createObjectStore("f");r.onsuccess=()=>r.result.transaction("f","readwrite").objectStore("f").put(file,"roster");save();q("#status").textContent=file.name+" · "+s.days.length+" дней распознано.";draw()}catch(x){q("#status").textContent="Ошибка: "+x.message}};q("#days").onclick=e=>{let b=e.target.closest("[data-d]");if(b){s.date=b.dataset.d;s.context="auto";save();draw()}};q("#context").onclick=e=>{if(e.target.dataset.x){s.context=e.target.dataset.x;save();draw()}};q("#mode").onchange=e=>{s.mode=e.target.value;save();draw()};q("#metric").onclick=()=>{let fat=+q("#fat").value;if(fat){s.metrics.push({fat,weight:+q("#weight").value||null});save();draw()}};q("#clear").onclick=()=>{if(confirm("Удалить всё локальное?")){localStorage.clear();indexedDB.deleteDatabase("fuel-pdf");location.reload()}};draw();drawFast();setInterval(drawFast,1000);if("serviceWorker"in navigator){navigator.serviceWorker.register("./sw.js").then(r=>{const offer=()=>q("#update").style.display="block";if(r.waiting)offer();r.addEventListener("updatefound",()=>r.installing?.addEventListener("statechange",()=>{if(r.waiting)offer()}));q("#update button").onclick=()=>r.waiting?.postMessage("SKIP_WAITING")});navigator.serviceWorker.addEventListener("controllerchange",()=>location.reload())}</script></body></html>
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme:light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme:dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Fuel Window</title>
+<style>
+/* ---------- tokens ---------- */
+:root{
+  color-scheme:light dark;
+  --bg:#f2f2f7; --bg-blur:rgba(242,242,247,.8);
+  --surface:#fff; --surface-2:#eef0f4; --surface-3:#e5e8ed;
+  --text:#10151a; --dim:#71757e; --line:#e4e7ec;
+  --accent:#0f6f5c; --accent-ink:#0c5b4b; --accent-soft:#ddf3ec;
+  --amber:#e5a133; --green:#2fa36b; --blue:#007aff; --red:#d23b2c;
+  --good-bg:#dff3e7; --good-fg:#1d7a4d;
+  --bad-bg:#fbe6e3; --bad-fg:#b3382a;
+  --warn-bg:#fdf3e6;
+  --hero-a:#15745f; --hero-b:#0a3931;
+  --on-hero:#fff; --on-hero-dim:#a8d8c8;
+  --k-rest:#34c759; --k-duty:#0a84ff; --k-early:#ff9f0a; --k-night:#8e7cff;
+  --r:22px;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#000; --bg-blur:rgba(0,0,0,.72);
+  --surface:#151618; --surface-2:#232428; --surface-3:#2e3035;
+  --text:#f4f5f7; --dim:#9297a0; --line:#26282c;
+  --accent:#28a689; --accent-ink:#79dfc2; --accent-soft:#123330;
+  --good-bg:#123528; --good-fg:#5fd39a;
+  --bad-bg:#3a201c; --bad-fg:#ff8f80;
+  --warn-bg:#2b2418;
+  --hero-a:#136452; --hero-b:#062421;
+}}
+
+/* ---------- base ---------- */
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+h1,h2,p{margin:0}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+
+/* ---------- header ---------- */
+.hdr{position:sticky;top:0;z-index:20;background:var(--bg-blur);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px}
+.hdr-in{max-width:640px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
+h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-space:nowrap}
+.hdr-sub{font-size:13px;color:var(--dim);margin-top:2px}
+.lock{flex:0 0 auto;font-size:12px;font-weight:650;padding:6px 10px;border-radius:99px;background:var(--accent-soft);color:var(--accent-ink)}
+
+/* ---------- layout ---------- */
+.wrap{max-width:640px;margin:0 auto;padding:4px 16px calc(env(safe-area-inset-bottom,0px) + 40px)}
+.slabel{font-size:12px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--dim);margin:24px 6px 8px}
+.card{background:var(--surface);border-radius:var(--r);padding:16px;box-shadow:0 1px 2px rgba(16,24,40,.04),0 10px 26px rgba(16,24,40,.05)}
+@media(prefers-color-scheme:dark){.card{box-shadow:none;border:1px solid var(--line)}}
+
+/* ---------- hero: fasting ---------- */
+.hero{background:linear-gradient(158deg,var(--hero-a),var(--hero-b));color:var(--on-hero);border-radius:26px;padding:16px;box-shadow:0 14px 32px rgba(10,57,49,.28)}
+.hero-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--on-hero-dim)}
+.hpill{font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;background:rgba(255,255,255,.16);color:#fff}
+
+.ring{position:relative;width:min(228px,62vw);aspect-ratio:1;margin:10px auto 2px}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg);display:block}
+.ring .track{fill:none;stroke:rgba(255,255,255,.15);stroke-width:8}
+.ring .bar{fill:none;stroke:var(--amber);stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .5s ease,stroke .3s ease}
+.ring.eat .bar{stroke:var(--green)}
+.ring .mid{position:absolute;inset:0;display:grid;align-content:center;justify-items:center;gap:6px;text-align:center;padding:0 22px}
+.ring strong{font-size:clamp(32px,9.5vw,40px);font-weight:750;letter-spacing:-1.2px;font-variant-numeric:tabular-nums;line-height:1}
+.ring small{font-size:13px;color:var(--on-hero-dim);line-height:1.3}
+
+.hmeta{display:flex;justify-content:space-between;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.14)}
+.hmeta div{display:grid;gap:3px;min-width:0}
+.hmeta div+div{text-align:right}
+.hmeta span{font-size:11px;font-weight:650;letter-spacing:.5px;text-transform:uppercase;color:var(--on-hero-dim)}
+.hmeta b{font-size:15px;font-weight:650;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.startrow{display:flex;gap:8px;margin-top:10px}
+.startrow input{flex:1;min-width:0;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:13px;padding:11px;font-size:15px;color:#fff}
+.startrow input::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.8}
+.startrow .btn{flex:0 0 auto}
+
+/* ---------- buttons ---------- */
+.btn{border:0;border-radius:14px;padding:13px 16px;min-height:48px;font-weight:650;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s ease,opacity .15s}
+.btn:active{transform:scale(.985)}
+.btn-amber{width:100%;margin-top:14px;background:var(--amber);color:#22200f}
+.btn-blue{width:100%;margin-top:14px;background:var(--blue);color:#fff}
+.btn-ghost{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.24)}
+.btn-quiet{background:var(--surface-2);color:var(--text)}
+.btn-link{width:100%;background:none;color:var(--on-hero-dim);min-height:38px;padding:8px;font-size:13px;font-weight:600;margin-top:4px}
+.btn-danger{background:var(--bad-bg);color:var(--bad-fg)}
+.mini{min-height:38px;padding:8px 14px;font-size:14px;border-radius:11px}
+
+/* ---------- segmented ---------- */
+.seg{display:flex;gap:4px;background:var(--surface-2);padding:4px;border-radius:15px;margin-top:14px}
+.seg button{flex:1 1 0;min-width:0;border:0;background:none;color:var(--dim);font-size:13px;font-weight:650;padding:9px 4px;min-height:40px;border-radius:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .15s,color .15s}
+.seg button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+#ctxSeg button{font-size:clamp(11px,3.1vw,13px)}
+.hero .seg{background:rgba(255,255,255,.13)}
+.hero .seg button{color:var(--on-hero-dim)}
+.hero .seg button.on{background:rgba(255,255,255,.94);color:#0a3931;box-shadow:none}
+
+/* ---------- day strip ---------- */
+.days{display:flex;gap:8px;overflow-x:auto;padding:2px 16px 6px;margin:0 -16px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.days::-webkit-scrollbar{display:none}
+.day{scroll-snap-align:center;flex:0 0 auto;width:72px;background:var(--surface-2);border:0;border-radius:16px;padding:9px 6px 8px;display:grid;justify-items:center;gap:2px;transition:background .15s}
+.day .dw{font-size:11px;font-weight:650;text-transform:uppercase;letter-spacing:.4px;color:var(--dim)}
+.day .dn{font-size:19px;font-weight:750;line-height:1.15;font-variant-numeric:tabular-nums}
+.day .dc{font-size:11px;color:var(--dim);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;background:var(--k-duty)}
+.day .dot{width:6px;height:6px;margin-top:3px}
+.day.today{box-shadow:inset 0 0 0 2px var(--accent)}
+.day.on{background:var(--accent);color:#fff}
+.day.on .dw,.day.on .dc{color:rgba(255,255,255,.85)}
+.day.on .dot{background:#fff}
+
+/* ---------- day forecast ---------- */
+.daytitle{font-size:13px;font-weight:650;color:var(--dim);margin-top:16px}
+.dutyline{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin-top:6px}
+.win{font-size:clamp(30px,8.5vw,38px);font-weight:750;letter-spacing:-1.2px;color:var(--accent-ink);font-variant-numeric:tabular-nums;line-height:1.1;margin-top:8px}
+.winsub{font-size:14px;color:var(--dim);margin-top:4px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px 14px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+@media(min-width:560px){.stats{grid-template-columns:repeat(4,1fr)}}
+.stat{display:grid;gap:3px;min-width:0}
+.stat span{font-size:11px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;color:var(--dim)}
+.stat b{font-size:15px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.note{display:flex;gap:11px;background:var(--warn-bg);border-radius:14px;padding:12px 14px;margin-top:14px;font-size:14px;line-height:1.45}
+.note:before{content:"";flex:0 0 3px;border-radius:99px;background:var(--amber)}
+.empty{font-size:14px;color:var(--dim);background:var(--surface-2);border-radius:14px;padding:14px;margin-top:12px}
+
+/* ---------- metrics ---------- */
+.trend{display:flex;align-items:baseline;flex-wrap:wrap;gap:10px;margin-bottom:6px}
+.trend b{font-size:34px;font-weight:750;letter-spacing:-1.2px;font-variant-numeric:tabular-nums;line-height:1}
+.delta{font-size:13px;font-weight:700;padding:4px 9px;border-radius:99px;background:var(--surface-2);color:var(--dim)}
+.delta.good{background:var(--good-bg);color:var(--good-fg)}
+.delta.bad{background:var(--bad-bg);color:var(--bad-fg)}
+.trendsub{font-size:13px;color:var(--dim);margin-bottom:14px}
+.mrow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{display:grid;gap:6px;min-width:0}
+.field>span{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--dim)}
+input[type=number],select{width:100%;font-size:16px;border:1px solid var(--line);background:var(--surface-2);border-radius:13px;padding:12px;min-height:48px}
+input[type=number]:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+
+/* ---------- settings rows ---------- */
+.row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-bottom:1px solid var(--line)}
+.row:first-child{padding-top:2px}
+.row:last-child{border-bottom:0;padding-bottom:2px}
+.rl{display:grid;gap:3px;min-width:0;font-size:15px;font-weight:600}
+.rl small{font-size:12px;font-weight:400;color:var(--dim);line-height:1.35}
+.row select{width:auto;min-width:150px;max-width:56vw}
+.foot{font-size:12px;line-height:1.5;color:var(--dim);margin:22px 6px 0}
+
+/* ---------- update banner ---------- */
+.update{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);max-width:608px;margin:0 auto;background:#1c1c1e;color:#fff;border-radius:18px;padding:12px 12px 12px 16px;display:none;align-items:center;justify-content:space-between;gap:12px;z-index:30;box-shadow:0 12px 30px rgba(0,0,0,.35)}
+.update.show{display:flex}
+.update button{background:var(--blue);color:#fff;border:0;border-radius:11px;padding:9px 14px;font-weight:650;min-height:40px}
+
+@media(max-width:400px){
+  .day{width:66px}
+  .mrow{grid-template-columns:1fr}
+  .hmeta b{font-size:14px}
+}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-in">
+    <div>
+      <h1>Fuel Window</h1>
+      <p class="hdr-sub" id="hdrSub">—</p>
+    </div>
+    <span class="lock">Локально</span>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div class="hero-top">
+      <span class="eyebrow" id="fastPhase">Голодание</span>
+      <span class="hpill" id="fastModePill">16:8</span>
+    </div>
+
+    <div class="ring" id="ring">
+      <svg viewBox="0 0 120 120" aria-hidden="true">
+        <circle class="track" cx="60" cy="60" r="52"></circle>
+        <circle class="bar" id="bar" cx="60" cy="60" r="52"></circle>
+      </svg>
+      <div class="mid">
+        <strong id="timer">—</strong>
+        <small id="fastSub">Не запущено</small>
+      </div>
+    </div>
+
+    <div class="hmeta" id="hmeta">
+      <div><span>Начало</span><b id="started">—</b></div>
+      <div><span id="endLabel">Окно питания</span><b id="ends">—</b></div>
+    </div>
+
+    <button id="fastBtn" class="btn btn-amber">Начать голодание</button>
+    <button id="editStart" class="btn btn-link">Указать другое время начала</button>
+    <div class="startrow" id="startWrap" hidden>
+      <input id="startAt" type="datetime-local" aria-label="Время начала голодания">
+      <button id="applyStart" class="btn btn-ghost mini">ОК</button>
+    </div>
+
+    <div class="seg" id="modeSeg">
+      <button data-m="12">12:12</button>
+      <button data-m="14">14:10</button>
+      <button data-m="16">16:8</button>
+      <button data-m="18">18:6</button>
+    </div>
+  </section>
+
+  <p class="slabel">План по roster</p>
+  <section class="card">
+    <div class="days" id="days"></div>
+    <p class="empty" id="daysEmpty">Импортируй PDF roster в настройках — появятся дни, duty и прогноз окна питания.</p>
+
+    <div class="seg" id="ctxSeg">
+      <button data-x="auto">По roster</button>
+      <button data-x="training">Тренировка</button>
+      <button data-x="recovery">Восстановление</button>
+    </div>
+
+    <div id="dayBox" hidden>
+      <p class="daytitle" id="dayTitle">—</p>
+      <p class="dutyline" id="dutyLine"></p>
+      <p class="win" id="win">—</p>
+      <p class="winsub" id="winSub"></p>
+      <div class="stats" id="stats"></div>
+      <p class="note" id="note" hidden></p>
+    </div>
+  </section>
+
+  <p class="slabel">Состав тела</p>
+  <section class="card">
+    <div class="trend" id="trend" hidden></div>
+    <p class="trendsub" id="trendSub" hidden></p>
+    <p class="empty" id="noMetric">Первый замер задаст точку отсчёта для тренда.</p>
+    <div class="mrow">
+      <label class="field"><span>Процент жира</span><input id="fat" type="number" step="0.1" min="3" max="70" inputmode="decimal" placeholder="18.0"></label>
+      <label class="field"><span>Вес, кг</span><input id="weight" type="number" step="0.1" min="30" max="250" inputmode="decimal" placeholder="77.0"></label>
+    </div>
+    <button id="metric" class="btn btn-blue">Сохранить замер</button>
+  </section>
+
+  <p class="slabel">Настройки</p>
+  <section class="card">
+    <label class="row">
+      <span class="rl">Roster PDF<small id="status">Файл не выбран</small></span>
+      <span class="btn btn-quiet mini">Выбрать<input id="pdf" type="file" accept="application/pdf" hidden></span>
+    </label>
+    <label class="row">
+      <span class="rl">Цель</span>
+      <select id="goal">
+        <option value="fat">Снижение жира</option>
+        <option value="keep">Поддержание веса</option>
+      </select>
+    </label>
+    <div class="row">
+      <span class="rl">Локальные данные<small>PDF и замеры хранятся только на этом устройстве</small></span>
+      <button id="clear" class="btn btn-danger mini">Удалить</button>
+    </div>
+  </section>
+
+  <p class="foot">Не медицинское приложение. Во время duty приоритет — сон, самочувствие и безопасная работоспособность.</p>
+</main>
+
+<div class="update" id="update"><span>Доступна новая версия</span><button id="reload">Обновить</button></div>
+
+<script src="roster-parser.js"></script>
+<script src="circadian.js"></script>
+<script>
+const q=s=>document.querySelector(s),K="fuel-v4";
+let s=JSON.parse(localStorage.getItem(K)||"{}");
+s.mode=s.mode||"16";s.context=s.context||"auto";s.days=s.days||[];s.metrics=s.metrics||[];s.goal=s.goal||"fat";
+const save=()=>localStorage.setItem(K,JSON.stringify(s));
+
+const WD=["вс","пн","вт","ср","чт","пт","сб"];
+const KIND={rest:"var(--k-rest)",duty:"var(--k-duty)",early:"var(--k-early)",night:"var(--k-night)"};
+const esc=x=>String(x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const today=()=>new Date().toLocaleDateString("sv-SE");
+const hm=n=>String(Math.floor((n%1440+1440)%1440/60)).padStart(2,"0")+":"+String((n%60+60)%60).padStart(2,"0");
+const long=d=>new Date(d+"T12:00").toLocaleDateString("ru-RU",{weekday:"long",day:"numeric",month:"long"});
+const clock=d=>d.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
+const stamp=d=>d.toLocaleString("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).replace(",","");
+const dur=ms=>[ms/36e5,ms/6e4%60,ms/1e3%60].map(x=>String(Math.floor(x)).padStart(2,"0")).join(":");
+const localValue=d=>new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,16);
+
+/* ---------- header ---------- */
+function drawHeader(){
+  const t=today(),d=s.days.find(x=>x.date===t);
+  q("#hdrSub").textContent=long(t).replace(/^./,c=>c.toUpperCase())+(d?" · "+d.code:"");
+}
+
+/* ---------- fasting ring ---------- */
+const R=52,CIRC=2*Math.PI*R;
+function drawFast(){
+  const start=s.fastStart?new Date(s.fastStart):null,now=new Date();
+  const fastMs=+s.mode*36e5,eatMs=(24-+s.mode)*36e5;
+  const end=start?new Date(start.getTime()+fastMs):null;
+  const eatEnd=end?new Date(end.getTime()+eatMs):null;
+  let phase="idle",pct=0;
+  if(start&&now<end)phase="fast";
+  else if(start&&now<eatEnd)phase="eat";
+  else if(start)phase="over";
+
+  q("#fastModePill").textContent=s.mode+":"+(24-s.mode);
+
+  if(phase==="fast"){
+    pct=(now-start)/fastMs*100;
+    q("#fastPhase").textContent="До окна питания";
+    q("#timer").textContent=dur(end-now);
+    q("#fastSub").textContent=Math.floor(pct)+"% голодания пройдено";
+    q("#endLabel").textContent="Окно питания в";
+    q("#ends").textContent=clock(end);
+  }else if(phase==="eat"){
+    pct=(now-end)/eatMs*100;
+    q("#fastPhase").textContent="Окно питания открыто";
+    q("#timer").textContent=dur(eatEnd-now);
+    q("#fastSub").textContent="До закрытия окна";
+    q("#endLabel").textContent="Окно закроется";
+    q("#ends").textContent=clock(eatEnd);
+  }else if(phase==="over"){
+    q("#fastPhase").textContent="Окно закрыто";
+    q("#timer").textContent=s.mode+":"+(24-s.mode);
+    q("#fastSub").textContent="Пора начать новое голодание";
+    q("#endLabel").textContent="Окно закрылось";
+    q("#ends").textContent=stamp(eatEnd);
+  }else{
+    q("#fastPhase").textContent="Голодание";
+    q("#timer").textContent=s.mode+":"+(24-s.mode);
+    q("#fastSub").textContent="Не запущено";
+    q("#endLabel").textContent="Окно питания";
+    q("#ends").textContent="—";
+  }
+
+  q("#started").textContent=start?stamp(start):"—";
+  q("#hmeta").hidden=!start;
+  q("#ring").classList.toggle("eat",phase==="eat");
+  pct=Math.max(0,Math.min(100,pct));
+  const bar=q("#bar");
+  bar.style.strokeDasharray=CIRC;
+  bar.style.strokeDashoffset=CIRC*(1-pct/100);
+  q("#fastBtn").textContent=phase==="fast"?"Завершить голодание":"Начать голодание";
+}
+
+/* ---------- roster day ---------- */
+function drawDay(){
+  const box=q("#days"),has=s.days.length>0;
+  q("#daysEmpty").hidden=has;
+  const t=today();
+  box.innerHTML=!has?"":s.days.map(d=>{
+    const date=new Date(d.date+"T12:00");
+    return '<button class="day'+(d.date===s.date?" on":"")+(d.date===t?" today":"")+'" data-d="'+d.date+'">'+
+      '<span class="dw">'+WD[date.getDay()]+'</span>'+
+      '<span class="dn">'+date.getDate()+'</span>'+
+      '<span class="dc">'+esc(d.code)+'</span>'+
+      '<i class="dot" style="background:'+(KIND[d.kind]||KIND.duty)+'"></i></button>';
+  }).join("");
+  const on=box.querySelector(".on");
+  if(on)box.scrollLeft=on.offsetLeft-(box.clientWidth-on.offsetWidth)/2;
+
+  document.querySelectorAll("#ctxSeg button").forEach(b=>b.classList.toggle("on",b.dataset.x===s.context));
+  document.querySelectorAll("#modeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.m===s.mode));
+
+  const d=s.days.find(x=>x.date===s.date),p=d?Circadian.get(d,s.days,s.context,+s.mode):null;
+  q("#ctxSeg").hidden=!has;
+  q("#dayBox").hidden=!p;
+  if(!p)return;
+  const from=hm(p.start),to=hm(p.start+p.h*60);
+  q("#dayTitle").textContent=long(d.date).replace(/^./,c=>c.toUpperCase());
+  q("#dutyLine").innerHTML='<i class="dot" style="background:'+(KIND[d.kind]||KIND.duty)+'"></i>'+
+    esc(d.code)+(d.times.length?" · "+esc(d.times.join(" → ")):"");
+  q("#win").textContent=from+" – "+to;
+  q("#winSub").textContent="Местное время: "+esc(p.zone.split("/")[1].replace(/_/g," "))+" ("+esc(p.dest)+")";
+  q("#stats").innerHTML=[
+    ["Голодание",to+" → "+from],
+    ["Питание",p.h+" ч"],
+    ["Время тела",(p.body>0?"+":"")+p.body.toFixed(1)+" ч"],
+    ["Адаптация",p.adapt.toFixed(1)+" ч"]
+  ].map(x=>'<div class="stat"><span>'+x[0]+'</span><b>'+x[1]+'</b></div>').join("");
+  const note=q("#note");
+  note.textContent=p.note;
+  note.hidden=!p.note;
+}
+
+/* ---------- metrics ---------- */
+function drawMetrics(){
+  const m=s.metrics,has=m.length>0;
+  q("#trend").hidden=!has;q("#trendSub").hidden=!has;q("#noMetric").hidden=has;
+  if(!has)return;
+  const last=m[m.length-1],first=m[0],diff=+(last.fat-first.fat).toFixed(1);
+  const chip=m.length<2?'<span class="delta">первый замер</span>'
+    :'<span class="delta '+(diff<0?"good":diff>0?"bad":"")+'">'+(diff>0?"+":"")+diff+" п.п.</span>";
+  q("#trend").innerHTML="<b>"+last.fat.toFixed(1)+"%</b>"+chip;
+  q("#trendSub").textContent=[
+    last.weight?last.weight.toFixed(1)+" кг":null,
+    m.length+(m.length===1?" замер":m.length<5?" замера":" замеров"),
+    last.date?new Date(last.date).toLocaleDateString("ru-RU",{day:"numeric",month:"long"}):null
+  ].filter(Boolean).join(" · ");
+}
+
+const drawAll=()=>{drawHeader();drawDay();drawMetrics();drawFast()};
+
+/* ---------- events ---------- */
+q("#fastBtn").onclick=()=>{
+  const now=new Date(),start=s.fastStart?new Date(s.fastStart):null;
+  if(start&&now<new Date(start.getTime()+ +s.mode*36e5))delete s.fastStart;
+  else s.fastStart=now.toISOString();
+  q("#startWrap").hidden=true;save();drawFast();
+};
+q("#editStart").onclick=()=>{
+  const w=q("#startWrap");w.hidden=!w.hidden;
+  if(w.hidden)return;
+  const i=q("#startAt");
+  i.max=localValue(new Date());
+  i.value=localValue(s.fastStart?new Date(s.fastStart):new Date());
+  i.focus();
+};
+q("#applyStart").onclick=()=>{
+  const v=q("#startAt").value;if(!v)return;
+  const t=new Date(v);if(isNaN(t))return;
+  s.fastStart=(t>new Date()?new Date():t).toISOString();
+  q("#startWrap").hidden=true;save();drawFast();
+};
+q("#modeSeg").onclick=e=>{
+  const b=e.target.closest("[data-m]");if(!b)return;
+  s.mode=b.dataset.m;save();drawDay();drawFast();
+};
+q("#ctxSeg").onclick=e=>{
+  const b=e.target.closest("[data-x]");if(!b)return;
+  s.context=b.dataset.x;save();drawDay();
+};
+q("#days").onclick=e=>{
+  const b=e.target.closest("[data-d]");if(!b)return;
+  s.date=b.dataset.d;s.context="auto";save();drawDay();
+};
+q("#goal").onchange=e=>{s.goal=e.target.value;save()};
+q("#metric").onclick=()=>{
+  const fat=+q("#fat").value,weight=+q("#weight").value;
+  if(!fat){q("#fat").focus();return}
+  s.metrics.push({fat,weight:weight||null,date:new Date().toISOString()});
+  q("#fat").value="";q("#weight").value="";
+  save();drawMetrics();
+};
+q("#pdf").onchange=async e=>{
+  const file=e.target.files[0];if(!file)return;
+  q("#status").textContent="Разбираю PDF на устройстве…";
+  try{
+    s.days=await FuelParser.parse(file);
+    s.date=s.days[0].date;
+    s.file={name:file.name,count:s.days.length};
+    const r=indexedDB.open("fuel-pdf",1);
+    r.onupgradeneeded=()=>r.result.createObjectStore("f");
+    r.onsuccess=()=>r.result.transaction("f","readwrite").objectStore("f").put(file,"roster");
+    save();drawStatus();drawAll();
+  }catch(x){q("#status").textContent="Ошибка: "+x.message}
+};
+q("#clear").onclick=()=>{
+  if(!confirm("Удалить все локальные данные приложения?"))return;
+  localStorage.clear();indexedDB.deleteDatabase("fuel-pdf");location.reload();
+};
+
+function drawStatus(){
+  q("#status").textContent=s.file?s.file.name+" · "+s.file.count+" дней":s.days.length?s.days.length+" дней импортировано":"Файл не выбран";
+}
+
+q("#goal").value=s.goal;
+drawStatus();drawAll();
+setInterval(drawFast,1000);
+
+/* ---------- service worker ---------- */
+if("serviceWorker"in navigator){
+  navigator.serviceWorker.register("./sw.js").then(r=>{
+    const offer=()=>q("#update").classList.add("show");
+    if(r.waiting)offer();
+    r.addEventListener("updatefound",()=>r.installing?.addEventListener("statechange",()=>{if(r.waiting)offer()}));
+    q("#reload").onclick=()=>r.waiting?.postMessage("SKIP_WAITING");
+  });
+  navigator.serviceWorker.addEventListener("controllerchange",()=>location.reload());
+}
+</script>
+</body>
+</html>
