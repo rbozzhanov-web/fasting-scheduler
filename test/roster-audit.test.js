@@ -37,11 +37,11 @@ test('night duty is intentionally exempt from the fat-loss 21:00 cap',()=>{
   assert.match(p.note,/безопасная работоспособность/);
 });
 
-test('hotel breakfast shifts a late away-station window early enough to catch breakfast',()=>{
+test('hotel breakfast shifts an adapted away-station window early enough to catch breakfast',()=>{
   const days=[
     day('2026-09-01','duty',['09:00','17:00'],['LHR']),
-    day('2026-09-02','rest',[],[]),
-    day('2026-09-03','duty',['10:00','18:00'],['ALA']),
+    day('2026-09-08','rest',[],[]),
+    day('2026-09-10','duty',['10:00','18:00'],['ALA']),
   ];
   const p=Circadian.get(days[1],days,'auto',16,{goal:'keep',breakfast:{on:true,from:390,to:600}});
   assert.equal(p.away,true);
@@ -75,6 +75,14 @@ test('long layover adapts body clock before return',()=>{
   assert.equal(st.station,'LHR');
   assert.equal(st.shortStay,false);
   assert.notEqual(st.bodyZone,st.homeOff);
+});
+
+test('flight duty uses departure station on the duty day and destination on the next roster day',()=>{
+  const days=[day('2026-09-01','early',['06:00','14:00'],['FRA']),day('2026-09-02')];
+  const duty=Circadian.get(days[0],days,'auto',16,{goal:'keep'});
+  const layover=Circadian.get(days[1],days,'auto',16,{goal:'keep'});
+  assert.equal(duty.zone,'Asia/Almaty');
+  assert.equal(layover.zone,'Europe/Berlin');
 });
 
 test('report-hour boundaries stay stable: 05 night, 06-08 early, 09 duty, 18 night',()=>{
