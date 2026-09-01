@@ -146,16 +146,15 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .win{font-size:clamp(30px,8.5vw,38px);font-weight:750;letter-spacing:-1.2px;color:var(--accent-ink);font-variant-numeric:tabular-nums;line-height:1.1;margin-top:6px}
 .winsub{font-size:14px;color:var(--dim);margin-top:2px}
 .winphone{font-size:13px;font-weight:650;color:var(--accent-ink);background:var(--accent-soft);border-radius:12px;padding:9px 11px;margin-top:9px}
+.nag{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px;padding:11px 12px;border-radius:13px;background:var(--warn-bg);color:var(--warn-fg);font-size:13px;font-weight:600;line-height:1.4}
+.nag button{border:0;border-radius:10px;padding:8px 12px;min-height:36px;font-weight:700;background:var(--warn-fg);color:var(--warn-bg)}
 .hotelrow{font-size:13px;font-weight:650;color:var(--warn-fg);background:var(--warn-bg);border-radius:12px;padding:9px 11px;margin-top:8px;line-height:1.38}
 .sw{appearance:none;-webkit-appearance:none;flex:0 0 auto;width:52px;height:32px;padding:0;border:0;border-radius:99px;background:var(--surface-3);position:relative;transition:background .2s}
 .sw:checked{background:var(--accent)}
 .sw:before{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.28);transition:transform .2s}
 .sw:checked:before{transform:translateX(20px)}
 .row.rowcol{display:block}
-.times{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
-.tfield{display:grid;gap:5px;min-width:0}
-.tfield>span{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--dim)}
-.times input{width:100%;min-width:0;min-height:46px;padding:12px 8px;text-align:center}
+.row input[type=time]{width:auto;flex:0 0 auto;min-height:44px;padding:10px 12px;text-align:center}
 .calbtn{margin-top:10px;width:100%}
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .pair .btn{width:100%}
@@ -287,6 +286,8 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
       <label class="field"><span>Вес, кг</span><input id="weight" type="number" step="0.1" min="30" max="250" inputmode="decimal" placeholder="77.0"></label>
     </div>
     <button id="metric" class="btn btn-blue">Сохранить замер</button>
+    <p class="nag" id="nag" hidden>Замеры есть только на этом устройстве. Удалите приложение — они исчезнут.
+      <button id="nagSave">Сохранить копию</button></p>
   </section>
 
 
@@ -316,13 +317,14 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
       <span class="rl">Завтрак в гостинице<small>Вне базы окно открывается к завтраку, а не в полдень</small></span>
       <input id="bfOn" type="checkbox" class="sw">
     </label>
-    <div class="row rowcol" id="bfTimes">
-      <span class="rl">Часы завтрака<small>По местному времени гостиницы</small></span>
-      <span class="times">
-        <label class="tfield"><span>Начало</span><input id="bfFrom" type="time"></label>
-        <label class="tfield"><span>Конец</span><input id="bfTo" type="time"></label>
-      </span>
-    </div>
+    <label class="row" id="bfFromRow">
+      <span class="rl">Начало завтрака<small>По местному времени гостиницы</small></span>
+      <input id="bfFrom" type="time">
+    </label>
+    <label class="row" id="bfToRow">
+      <span class="rl">Конец завтрака</span>
+      <input id="bfTo" type="time">
+    </label>
     <label class="row">
       <span class="rl">Уведомления<small id="notifyHint">За час до события и в момент</small></span>
       <input id="notifyOn" type="checkbox" class="sw">
@@ -361,7 +363,7 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 <script src="roster-parser.js"></script>
 <script src="circadian.js"></script>
 <script>
-const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v22";
+const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v23";
 let s=JSON.parse(localStorage.getItem(K)||"{}");
 s.mode=s.mode||"16";s.context=s.context||"auto";s.days=s.days||[];s.metrics=s.metrics||[];s.goal=s.goal||"fat";
 s.bf=Object.assign({on:true,from:"06:30",to:"10:00"},s.bf);
@@ -650,6 +652,7 @@ async function shareIcs(){
    Домашний веб-апп на iOS живёт в собственном хранилище: удалили ярлык —
    стёрлись и настройки, и замеры. Своего сервера нет, поэтому единственная
    защита — файл, который лежит в «Файлах» или iCloud. */
+const drawBfRows=()=>{q("#bfFromRow").hidden=!s.bf.on;q("#bfToRow").hidden=!s.bf.on};
 function drawBackup(){
   const n=s.metrics.length;
   q("#backupHint").innerHTML=s.backupAt
@@ -720,11 +723,14 @@ function drawDay(){
 function drawMetrics(){
   const m=s.metrics,has=m.length>0;
   q("#trend").hidden=!has;q("#trendSub").hidden=!has;q("#noMetric").hidden=has;
+  q("#nag").hidden=true;
   if(!has)return;
   const last=m[m.length-1],first=m[0],diff=+(last.fat-first.fat).toFixed(1);
   const chip=m.length<2?'<span class="delta">первый замер</span>'
     :'<span class="delta '+(diff<0?"good":diff>0?"bad":"")+'">'+(diff>0?"+":"")+diff+" п.п.</span>";
   q("#trend").innerHTML="<b>"+last.fat.toFixed(1)+"%</b>"+chip;
+  const last0=m[m.length-1];
+  q("#nag").hidden=!(!s.backupAt||(last0.date&&new Date(s.backupAt)<new Date(last0.date)));
   q("#trendSub").textContent=[
     last.weight?last.weight.toFixed(1)+" кг":null,
     m.length+(m.length===1?" замер":m.length<5?" замера":" замеров"),
@@ -769,6 +775,7 @@ q("#goal").onchange=e=>{s.goal=e.target.value;save()};
 q("#ics").onclick=()=>{s.icsStale=false;save();drawIcs();openIcs()};
 q("#icsFile").onclick=()=>{s.icsStale=false;save();drawIcs();shareIcs()};
 q("#backup").onclick=exportBackup;
+q("#nagSave").onclick=()=>{exportBackup();drawMetrics()};
 const sheet=q("#sheet");
 const openSheet=on=>{
   sheet.classList.toggle("open",on);
@@ -796,7 +803,7 @@ q("#notifyOn").onchange=async e=>{
   if(p==="default"){try{p=await Notification.requestPermission()}catch(x){p="denied"}}
   s.notify=p==="granted";save();schedule();drawNotify();
 };
-q("#bfOn").onchange=e=>{s.bf.on=e.target.checked;q("#bfTimes").hidden=!s.bf.on;save();drawDay()};
+q("#bfOn").onchange=e=>{s.bf.on=e.target.checked;drawBfRows();save();drawDay()};
 q("#bfFrom").onchange=e=>{s.bf.from=e.target.value||s.bf.from;e.target.value=s.bf.from;save();drawDay()};
 q("#bfTo").onchange=e=>{s.bf.to=e.target.value||s.bf.to;e.target.value=s.bf.to;save();drawDay()};
 q("#metric").onclick=()=>{
@@ -831,7 +838,7 @@ function drawStatus(){
 
 q("#ver").textContent=APP_VERSION;
 q("#mode").value=s.mode;q("#goal").value=s.goal;
-q("#bfOn").checked=!!s.bf.on;q("#bfFrom").value=s.bf.from;q("#bfTo").value=s.bf.to;q("#bfTimes").hidden=!s.bf.on;
+q("#bfOn").checked=!!s.bf.on;q("#bfFrom").value=s.bf.from;q("#bfTo").value=s.bf.to;drawBfRows();
 drawStatus();drawAll();
 setInterval(()=>{drawFast();checkDue()},1000);
 schedule();
