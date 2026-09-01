@@ -364,11 +364,48 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 <script src="circadian.js"></script>
 <script>
 const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v24";
-let s=JSON.parse(localStorage.getItem(K)||"{}");
-s.mode=s.mode||"16";s.context=s.context||"auto";s.days=s.days||[];s.metrics=s.metrics||[];s.goal=s.goal||"fat";
-s.bf=Object.assign({on:true,from:"06:30",to:"10:00"},s.bf);
-s.notify=!!s.notify;s.fired=s.fired||{};
-const save=()=>localStorage.setItem(K,JSON.stringify(s));
+const MODES=["12","14","16","18"],CONTEXTS=["auto","training","recovery"],GOALS=["fat","keep"];
+const DATE_RE=/^\d{4}-\d{2}-\d{2}$/;
+const isValidDay=d=>!!d&&typeof d==="object"&&typeof d.date==="string"&&DATE_RE.test(d.date)&&typeof d.code==="string"
+  &&["rest","duty","early","night"].includes(d.kind)
+  &&Array.isArray(d.times)&&d.times.every(t=>typeof t==="string")
+  &&Array.isArray(d.airports)&&d.airports.every(a=>typeof a==="string")
+  &&(d.report===null||typeof d.report==="string")&&(d.release===null||typeof d.release==="string");
+const isValidMetric=m=>!!m&&typeof m==="object"&&typeof m.date==="string"&&!isNaN(Date.parse(m.date))
+  &&Number.isFinite(m.fat)&&m.fat>=3&&m.fat<=70
+  &&(m.weight==null||(Number.isFinite(m.weight)&&m.weight>=30&&m.weight<=250));
+/* Повреждённый localStorage не должен блокировать запуск: сбрасываем на
+   дефолты и один раз показываем причину — иначе пользователь молча
+   теряет весь ростер без объяснения. */
+let dataNotice=null,s;
+try{
+  s=JSON.parse(localStorage.getItem(K)||"{}");
+  if(!s||typeof s!=="object"||Array.isArray(s))throw Error("bad shape");
+}catch(e){
+  s={};
+  dataNotice="Сохранённые данные повреждены и были сброшены. Если есть резервная копия — восстановите её ниже.";
+}
+/* Отдельные испорченные поля (валидный JSON, но не тот тип/значение)
+   нормализуются тихо — это куда менее серьёзно, чем полный крах, и
+   остальной ростер/настройки при этом не теряются. */
+s.mode=MODES.includes(s.mode)?s.mode:"16";
+s.context=CONTEXTS.includes(s.context)?s.context:"auto";
+s.goal=GOALS.includes(s.goal)?s.goal:"fat";
+s.days=Array.isArray(s.days)?s.days.filter(isValidDay):[];
+s.metrics=Array.isArray(s.metrics)?s.metrics.filter(isValidMetric):[];
+s.bf=Object.assign({on:true,from:"06:30",to:"10:00"},(s.bf&&typeof s.bf==="object"&&!Array.isArray(s.bf))?s.bf:{});
+s.notify=!!s.notify;
+s.fired=(s.fired&&typeof s.fired==="object"&&!Array.isArray(s.fired))?s.fired:{};
+if(s.fastStart!=null&&isNaN(new Date(s.fastStart)))delete s.fastStart;
+const save=()=>{
+  try{
+    localStorage.setItem(K,JSON.stringify(s));
+    if(dataNotice){dataNotice=null;drawBackup()}
+  }catch(e){
+    dataNotice="Не удалось сохранить изменения — освободите место в браузере или отключите приватный режим.";
+    drawBackup();
+  }
+};
 
 const WD=["вс","пн","вт","ср","чт","пт","сб"];
 const KIND={rest:"var(--k-rest)",duty:"var(--k-duty)",early:"var(--k-early)",night:"var(--k-night)"};
@@ -661,6 +698,7 @@ async function shareIcs(){
 const drawBfRows=()=>{q("#bfFromRow").hidden=!s.bf.on;q("#bfToRow").hidden=!s.bf.on};
 function drawBackup(){
   const n=s.metrics.length;
+  if(dataNotice){q("#backupHint").innerHTML='<span class="attn">'+esc(dataNotice)+"</span>";return}
   q("#backupHint").innerHTML=s.backupAt
     ? "Последняя копия: "+stamp(new Date(s.backupAt))+". Настройки, roster и замеры ("+n+")."
     : (n?'<span class="attn">Копии ещё нет, а замеров уже '+n+'. При удалении приложения они пропадут.</span>'
@@ -688,7 +726,7 @@ function drawDay(){
   box.innerHTML=!has?"":s.days.map(d=>{
     const date=new Date(d.date+"T12:00");
     return '<button class="day'+(d.date===s.date?" on":"")+(d.date===t?" today":"")+
-      '" data-d="'+d.date+'" style="--k:'+(KIND[d.kind]||KIND.duty)+'">'+
+      '" data-d="'+esc(d.date)+'" style="--k:'+(KIND[d.kind]||KIND.duty)+'">'+
       '<span class="dw">'+WD[date.getDay()]+'</span>'+
       '<span class="dn">'+date.getDate()+'</span>'+
       '<span class="dc">'+esc(d.code)+'</span></button>';
@@ -792,11 +830,26 @@ const openSheet=on=>{
 q("#openSet").onclick=()=>openSheet(true);
 q("#closeSet").onclick=()=>openSheet(false);
 addEventListener("keydown",e=>{if(e.key==="Escape")openSheet(false)});
+/* Backup — менее доверенный источник, чем случайно повреждённый
+   localStorage: любое несоответствие отклоняет файл целиком, до
+   какой-либо записи, а не чинит его по частям. */
+function validateBackup(d){
+  if(!d||typeof d!=="object")throw Error("файл повреждён");
+  if(d.app!=="fuel-window")throw Error("это не копия Fuel Window");
+  if(d.v!==1)throw Error("неподдерживаемая версия резервной копии");
+  const st=d.state;
+  if(!st||typeof st!=="object")throw Error("отсутствуют данные состояния");
+  if(!MODES.includes(st.mode))throw Error("некорректный режим голодания");
+  if(!CONTEXTS.includes(st.context))throw Error("некорректный контекст");
+  if(!GOALS.includes(st.goal))throw Error("некорректная цель");
+  if(!Array.isArray(st.days)||!st.days.every(isValidDay))throw Error("повреждён ростер в копии");
+  if(!Array.isArray(st.metrics)||!st.metrics.every(isValidMetric))throw Error("повреждены замеры в копии");
+}
 q("#restore").onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
   try{
     const d=JSON.parse(await f.text());
-    if(d.app!=="fuel-window"||!d.state)throw Error("это не копия Fuel Window");
+    validateBackup(d);
     localStorage.setItem(K,JSON.stringify(d.state));
     location.reload();
   }catch(x){q("#backupHint").innerHTML='<span class="attn">Не удалось восстановить: '+esc(x.message)+"</span>"}
@@ -837,7 +890,7 @@ q("#pdf").onchange=async e=>{
 };
 q("#clear").onclick=()=>{
   if(!confirm("Удалить все локальные данные приложения?"))return;
-  localStorage.clear();indexedDB.deleteDatabase("fuel-pdf");location.reload();
+  localStorage.removeItem(K);indexedDB.deleteDatabase("fuel-pdf");location.reload();
 };
 
 function drawStatus(){
