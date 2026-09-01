@@ -120,9 +120,6 @@ async function withPage(run) {
       chrome.kill();
       await once(chrome, "exit");
     }
-    /* Chromium may leave profile files briefly locked after its parent exits.
-       Cleanup is housekeeping, not part of the assertion: never turn a green
-       browser test red solely because /tmp could not be removed immediately. */
     try {
       fs.rmSync(profile, { recursive: true, force: true, maxRetries: 20, retryDelay: 150 });
     } catch {}
@@ -223,7 +220,7 @@ test("main screen and settings stay within 320, 390, and 430 pixel iPhone viewpo
       })()`);
       const settings = await evaluate(`(() => {
         const sheet = document.querySelector('#sheet');
-        const selectors = ['.sheet-hd','.sheet .card','#closeSet','#mode','#goal','#bfOn','#bfFrom','#bfTo'];
+        const selectors = ['.sheet-hd','.sheet .card','#closeSet','#mode','#goalSeg','#bfOn','#bfFrom','#bfTo'];
         const rects = selectors.map(selector => {
           const rect = document.querySelector(selector).getBoundingClientRect();
           return { selector, left: rect.left, right: rect.right, width: rect.width };
