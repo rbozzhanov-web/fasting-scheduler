@@ -187,6 +187,65 @@ test("functional glass controls have a specular edge without decorating content 
   });
 });
 
+test("main screen and settings stay within 320, 390, and 430 pixel iPhone viewports", async () => {
+  await withPage(async ({ evaluate, send }) => {
+    for (const width of [320, 390, 430]) {
+      await send("Emulation.setDeviceMetricsOverride", {
+        width,
+        height: width === 430 ? 932 : 844,
+        deviceScaleFactor: 1,
+        mobile: true,
+      });
+
+      const main = await evaluate(`(() => {
+        const selectors = ['.hdr','.hero','main .card','#fastBtn','#editStart'];
+        const rects = selectors.map(selector => {
+          const rect = document.querySelector(selector).getBoundingClientRect();
+          return { selector, left: rect.left, right: rect.right, width: rect.width };
+        });
+        return { innerWidth, scrollWidth: document.documentElement.scrollWidth, rects };
+      })()`);
+      assert.equal(main.innerWidth, width);
+      assert.ok(main.scrollWidth <= width, `main screen overflows at ${width}px`);
+      for (const rect of main.rects) {
+        assert.ok(rect.width > 0, `${rect.selector} collapses at ${width}px`);
+        assert.ok(rect.left >= 0 && rect.right <= width, `${rect.selector} escapes ${width}px viewport`);
+      }
+
+      await evaluate(`(async () => {
+        document.querySelector('#openSet').click();
+        await new Promise(resolve => setTimeout(resolve, 350));
+      })()`);
+      const settings = await evaluate(`(() => {
+        const sheet = document.querySelector('#sheet');
+        const selectors = ['.sheet-hd','.sheet .card','#closeSet','#mode','#goal','#bfOn','#bfFrom','#bfTo'];
+        const rects = selectors.map(selector => {
+          const rect = document.querySelector(selector).getBoundingClientRect();
+          return { selector, left: rect.left, right: rect.right, width: rect.width };
+        });
+        const bounds = sheet.getBoundingClientRect();
+        return {
+          open: sheet.open,
+          innerWidth,
+          scrollWidth: sheet.scrollWidth,
+          clientWidth: sheet.clientWidth,
+          bounds: { left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom },
+          rects,
+        };
+      })()`);
+      assert.equal(settings.open, true);
+      assert.equal(settings.innerWidth, width);
+      assert.ok(settings.scrollWidth <= settings.clientWidth, `settings overflow at ${width}px`);
+      assert.deepEqual(settings.bounds, { left: 0, right: width, top: 0, bottom: width === 430 ? 932 : 844 });
+      for (const rect of settings.rects) {
+        assert.ok(rect.width > 0, `${rect.selector} collapses at ${width}px`);
+        assert.ok(rect.left >= 0 && rect.right <= width, `${rect.selector} escapes ${width}px viewport`);
+      }
+      await evaluate("document.querySelector('#sheet').close()");
+    }
+  });
+});
+
 test("the visual release advances the installed PWA cache and visible version together", async () => {
   let install;
   let openedCache;
