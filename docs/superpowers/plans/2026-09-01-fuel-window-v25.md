@@ -353,7 +353,7 @@ Expected: FAIL because `parsePages` is missing and current module is browser-onl
 
 - [ ] **Step 3: Extract pure parsing and add compatible exports**
 
-Use a module wrapper that obtains zones from `Circadian.Z` in the browser or `require("../circadian.js")` in tests. Keep PDF.js import inside `parse(file)`.
+Use a module wrapper that obtains zones from `Circadian.Z` in the browser or `require("./circadian.js")` in Node. Keep PDF.js import inside `parse(file)`.
 
 `parse(file)` must loop from page 1 through `pdf.numPages`, map every page to normalized text items, then call `parsePages(pages)`.
 
@@ -602,11 +602,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - run: npm test
 ```
 
-Because there are no dependencies or lockfile, remove `cache: npm` if setup-node rejects missing dependency metadata during the first workflow run.
+No dependency cache is configured because the project has no lockfile or install step.
 
 - [ ] **Step 2: Rewrite README to match the application**
 
