@@ -396,6 +396,10 @@ s.metrics=Array.isArray(s.metrics)?s.metrics.filter(isValidMetric):[];
 s.bf=Object.assign({on:true,from:"06:30",to:"10:00"},(s.bf&&typeof s.bf==="object"&&!Array.isArray(s.bf))?s.bf:{});
 s.notify=!!s.notify;
 s.fired=(s.fired&&typeof s.fired==="object"&&!Array.isArray(s.fired))?s.fired:{};
+/* parserWarnings — техническое поле от roster-парсера (см. roster-parser.js),
+   пока нигде в UI не показывается: экран предпросмотра warnings — отдельная
+   будущая задача. Отсутствие поля в старых backup — не повод отклонять их. */
+s.parserWarnings=Array.isArray(s.parserWarnings)?s.parserWarnings:[];
 if(s.fastStart!=null&&isNaN(new Date(s.fastStart)))delete s.fastStart;
 const save=()=>{
   try{
@@ -406,6 +410,14 @@ const save=()=>{
     drawBackup();
   }
 };
+/* Исходный PDF больше не должен храниться (он никогда повторно не
+   читался) — разово вычищаем то, что успело накопиться у уже
+   существующих пользователей до этого исправления. */
+if(!s.pdfBlobPurged){
+  indexedDB.deleteDatabase("fuel-pdf");
+  s.pdfBlobPurged=true;
+  save();
+}
 
 const WD=["вс","пн","вт","ср","чт","пт","сб"];
 const KIND={rest:"var(--k-rest)",duty:"var(--k-duty)",early:"var(--k-early)",night:"var(--k-night)"};
@@ -878,15 +890,19 @@ q("#pdf").onchange=async e=>{
   const file=e.target.files[0];if(!file)return;
   q("#status").textContent="Разбираю PDF на устройстве…";
   try{
-    s.days=await FuelParser.parse(file);
-    s.date=s.days[0].date;
-    s.file={name:file.name,count:s.days.length};
+    const result=await FuelParser.parse(file);
+    const days=result.days,warnings=result.warnings||[];
+    /* Ничего не трогаем в живом состоянии, пока результат не прошёл
+       проверку — иначе неудачный импорт может стереть рабочий ростер,
+       как только сработает любой другой save() в приложении. */
+    if(!days.length)throw Error("Не удалось распознать дни в PDF");
+    s.days=days;
+    s.date=days[0].date;
+    s.file={name:file.name,count:days.length};
+    s.parserWarnings=warnings;
     s.icsStale=true;
-    const r=indexedDB.open("fuel-pdf",1);
-    r.onupgradeneeded=()=>r.result.createObjectStore("f");
-    r.onsuccess=()=>r.result.transaction("f","readwrite").objectStore("f").put(file,"roster");
     save();drawStatus();drawAll();
-  }catch(x){q("#status").textContent="Ошибка: "+x.message}
+  }catch(x){q("#status").textContent="Ошибка: "+x.message+". Предыдущий ростер сохранён."}
 };
 q("#clear").onclick=()=>{
   if(!confirm("Удалить все локальные данные приложения?"))return;
