@@ -535,7 +535,7 @@ function checkDue(){
 }
 
 /* Старт, ручное время и смена интервала двигают все четыре момента. */
-function fastChanged(){s.fired={};save();drawFast();schedule();drawNotify()}
+function fastChanged(){s.fired={};s.icsStale=true;save();drawFast();schedule();drawNotify();drawIcs()}
 
 function drawIcs(){
   const n=planWindows().length+(s.fastStart?1:0);
@@ -631,6 +631,7 @@ async function openIcs(){
                 "Content-Disposition":'inline; filename="fuel-window.ics"'}}));
     const w=window.open(ICS_URL,"_blank");
     if(!w)location.href=ICS_URL;
+    s.icsStale=false;save();drawIcs();
   }catch(x){shareIcs()}
 }
 const ICS_URL="./reminders.ics";
@@ -645,11 +646,11 @@ async function shareIcs(){
   const text=buildIcs(),name="fuel-window.ics",type="text/calendar";
   try{
     const file=new File([text],name,{type});
-    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file]});return}
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file]});s.icsStale=false;save();drawIcs();return}
   }catch(x){if(x&&x.name==="AbortError")return}
   const url=URL.createObjectURL(new Blob([text],{type}));
   const a=document.createElement("a");a.href=url;a.download=name;
-  document.body.appendChild(a);a.click();
+  document.body.appendChild(a);a.click();s.icsStale=false;save();drawIcs();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},1000);
 }
 
@@ -767,7 +768,7 @@ q("#applyStart").onclick=()=>{
   s.fastTz=devZone();s.fastTzOff=devOff();
   q("#startWrap").hidden=true;fastChanged();
 };
-q("#mode").onchange=e=>{s.mode=e.target.value;save();drawDay();fastChanged()};
+q("#mode").onchange=e=>{s.mode=e.target.value;s.icsStale=true;save();drawDay();fastChanged()};
 q("#ctxSeg").onclick=e=>{
   const b=e.target.closest("[data-x]");if(!b)return;
   s.context=b.dataset.x;save();drawDay();
@@ -776,9 +777,9 @@ q("#days").onclick=e=>{
   const b=e.target.closest("[data-d]");if(!b)return;
   s.date=b.dataset.d;s.context="auto";save();drawDay();
 };
-q("#goal").onchange=e=>{s.goal=e.target.value;save()};
-q("#ics").onclick=()=>{s.icsStale=false;save();drawIcs();openIcs()};
-q("#icsFile").onclick=()=>{s.icsStale=false;save();drawIcs();shareIcs()};
+q("#goal").onchange=e=>{s.goal=e.target.value;s.icsStale=true;save();drawDay();drawFast();drawIcs()};
+q("#ics").onclick=openIcs;
+q("#icsFile").onclick=shareIcs;
 q("#backup").onclick=exportBackup;
 q("#nagSave").onclick=()=>{exportBackup();drawMetrics()};
 const sheet=q("#sheet");
@@ -808,9 +809,9 @@ q("#notifyOn").onchange=async e=>{
   if(p==="default"){try{p=await Notification.requestPermission()}catch(x){p="denied"}}
   s.notify=p==="granted";save();schedule();drawNotify();
 };
-q("#bfOn").onchange=e=>{s.bf.on=e.target.checked;drawBfRows();save();drawDay()};
-q("#bfFrom").onchange=e=>{s.bf.from=e.target.value||s.bf.from;e.target.value=s.bf.from;save();drawDay()};
-q("#bfTo").onchange=e=>{s.bf.to=e.target.value||s.bf.to;e.target.value=s.bf.to;save();drawDay()};
+q("#bfOn").onchange=e=>{s.bf.on=e.target.checked;s.icsStale=true;drawBfRows();save();drawDay();drawIcs()};
+q("#bfFrom").onchange=e=>{s.bf.from=e.target.value||s.bf.from;e.target.value=s.bf.from;s.icsStale=true;save();drawDay();drawIcs()};
+q("#bfTo").onchange=e=>{s.bf.to=e.target.value||s.bf.to;e.target.value=s.bf.to;s.icsStale=true;save();drawDay();drawIcs()};
 q("#metric").onclick=()=>{
   const fi=q("#fat"),wi=q("#weight"),fat=Number(fi.value),weight=wi.value===""?null:Number(wi.value);
   fi.setCustomValidity("");wi.setCustomValidity("");
