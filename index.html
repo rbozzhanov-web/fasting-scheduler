@@ -363,7 +363,7 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 <script src="roster-parser.js"></script>
 <script src="circadian.js"></script>
 <script>
-const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v24";
+const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v25";
 const MODES=["12","14","16","18"],CONTEXTS=["auto","training","recovery"],GOALS=["fat","keep"];
 const DATE_RE=/^\d{4}-\d{2}-\d{2}$/;
 const isValidDay=d=>!!d&&typeof d==="object"&&typeof d.date==="string"&&DATE_RE.test(d.date)&&typeof d.code==="string"
@@ -923,21 +923,38 @@ schedule();
 /* ---------- service worker ---------- */
 /* iOS восстанавливает свёрнутый PWA из памяти: страница не грузится заново,
    поэтому обновление само не проверялось. Проверяем при запуске и каждый раз,
-   когда приложение возвращается на экран, и применяем найденное сразу. */
+   когда приложение возвращается на экран, и применяем найденное сразу — это
+   безопасно именно потому, что пользователь либо только что открыл
+   приложение, либо только что вернулся в него.
+   Обновление, обнаруженное, пока приложение открыто и видимо (updatefound
+   при document.hidden===false), могло бы прервать активный ввод — вместо
+   тихой перезагрузки показываем баннер и ждём явного клика. */
 if("serviceWorker"in navigator){
-  let reloading=false;
+  let reloading=false,safeReload=false;
+  const showBanner=()=>q("#update").classList.add("show");
+  const doReload=()=>{if(reloading)return;reloading=true;location.reload()};
   navigator.serviceWorker.register("./sw.js").then(r=>{
     const apply=()=>{if(!r.waiting)return false;r.waiting.postMessage("SKIP_WAITING");return true};
-    const check=()=>{if(!apply())r.update().catch(()=>{})};
+    /* check() запускается только при загрузке и при возврате из фона —
+       в оба момента ещё нечего было прервать перезагрузкой, поэтому
+       найденное здесь обновление можно применять без опроса ниже. */
+    const check=()=>{if(apply())safeReload=true;else r.update().catch(()=>{})};
     check();
     document.addEventListener("visibilitychange",()=>{if(!document.hidden)check()});
     r.addEventListener("updatefound",()=>r.installing?.addEventListener("statechange",()=>{
-      if(r.waiting&&!apply())q("#update").classList.add("show");
+      if(!r.waiting)return;
+      if(document.hidden)apply();else showBanner();
     }));
-    q("#reload").onclick=()=>apply();
+    q("#reload").onclick=()=>{if(apply())safeReload=true;else doReload()};
   });
   navigator.serviceWorker.addEventListener("controllerchange",()=>{
-    if(reloading)return;reloading=true;location.reload();
+    /* safeReload — разовый токен: помечает только что запрошенную здесь же
+       перезагрузку (check() нашёл уже готовое обновление, либо явный клик
+       «Обновить»). Для не найденных явно источников — включая обновление,
+       обнаруженное в фоне, чьё состояние могло устареть к этому моменту, —
+       решаем по текущей видимости, а не по тому, что было раньше. */
+    const safe=safeReload;safeReload=false;
+    if(safe||document.hidden)doReload();else showBanner();
   });
 }
 </script>
