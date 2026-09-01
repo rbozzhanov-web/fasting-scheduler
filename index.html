@@ -53,13 +53,13 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0;background:var(--bg);color:var(--text)}
-body{font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+body{font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;touch-action:manipulation;overflow-x:hidden}
 h1,h2,p{margin:0}
 button,input,select{font:inherit;color:inherit}
-button{cursor:pointer}
+button{cursor:pointer}p,span,b,small{overflow-wrap:anywhere}.tmrow>*{min-width:0}.tmrow strong{white-space:nowrap}.row>*{min-width:0}
 
 /* ---------- header ---------- */
-.hdr{position:sticky;top:0;z-index:20;background:var(--bg-blur);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px}
+.hdr{position:sticky;top:0;z-index:20;background:var(--bg);padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px;border-bottom:1px solid var(--line)}
 .hdr-in{max-width:640px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
 h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-space:nowrap}
 .hdr-sub{font-size:13px;color:var(--dim);margin-top:2px}
@@ -68,7 +68,7 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .gear svg{width:22px;height:22px}
 .sheet{position:fixed;inset:0;z-index:40;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;visibility:hidden;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1),visibility .3s}
 .sheet.open{visibility:visible;transform:none}
-.sheet-hd{position:sticky;top:0;z-index:2;background:var(--bg-blur);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px}
+.sheet-hd{position:sticky;top:0;z-index:2;background:var(--bg);padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px;border-bottom:1px solid var(--line)}
 .sheet-in{max-width:640px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .sheet-in h2{font-size:22px;font-weight:750;letter-spacing:-.5px}
 .sheet-body{max-width:640px;margin:0 auto;padding:0 16px calc(env(safe-area-inset-bottom,0px) + 40px)}
@@ -242,7 +242,7 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
     </div>
 
     <p class="tzline" id="tzLine"></p>
-    <p class="tznote" id="tzNote" hidden></p>
+    <p class="tznote" id="tzNote" hidden></p><p class="tznote" id="planNote" hidden></p>
 
     <div class="acts">
       <button id="fastBtn" class="btn btn-act">Начать</button>
@@ -363,7 +363,7 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 <script src="roster-parser.js"></script>
 <script src="circadian.js"></script>
 <script>
-const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v23";
+const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v24";
 let s=JSON.parse(localStorage.getItem(K)||"{}");
 s.mode=s.mode||"16";s.context=s.context||"auto";s.days=s.days||[];s.metrics=s.metrics||[];s.goal=s.goal||"fat";
 s.bf=Object.assign({on:true,from:"06:30",to:"10:00"},s.bf);
@@ -397,7 +397,7 @@ const utc=h=>{const sign=h<0?"−":"+",a=Math.abs(h),H=Math.floor(a),M=Math.roun
 /* Завтрак в гостинице: часы указываются по местному времени гостиницы,
    то есть в той же шкале, в которой считается окно питания. */
 const toMin=t=>{const m=/^(\d{1,2}):(\d{2})$/.exec(t||"");return m?+m[1]*60+ +m[2]:null};
-const bfOpts=()=>{const f=toMin(s.bf.from),t=toMin(s.bf.to);return{breakfast:{on:!!s.bf.on&&f!=null&&t!=null&&f<t,from:f,to:t}}};
+const bfOpts=()=>{const f=toMin(s.bf.from),t=toMin(s.bf.to);return{goal:s.goal,breakfast:{on:!!s.bf.on&&f!=null&&t!=null&&f<t,from:f,to:t}}};
 
 /* ---------- header ---------- */
 function drawHeader(){
@@ -476,6 +476,11 @@ function drawFast(){
   q("#labFast").textContent="Голодание "+s.mode+" ч";
   q("#labEat").textContent="Окно "+(24-s.mode)+" ч";
   q("#fastBtn").textContent=phase==="fast"?"Завершить":"Начать голодание";
+  const align=q("#planNote");align.hidden=true;
+  if(start&&end&&phase==="fast"&&s.days.length){
+    const plans=planWindows();if(plans.length){const near=plans.reduce((a,b)=>Math.abs(b.from-end.getTime())<Math.abs(a.from-end.getTime())?b:a),diff=end.getTime()-near.from;
+      if(Math.abs(diff)<=36e5*36){const m=Math.round(Math.abs(diff)/6e4),v=m>=60?Math.floor(m/60)+" ч "+(m%60?m%60+" мин":""):m+" мин";align.textContent=Math.abs(diff)<18e5?"Фактическое окончание совпадает с ближайшим roster-окном.":"Фактическое окно откроется на "+v+" "+(diff<0?"раньше":"позже")+" ближайшего roster-плана.";align.hidden=false}}
+  }
 }
 
 /* ---------- напоминания ----------
@@ -575,7 +580,7 @@ function planWindows(){
   for(const d of s.days){
     let p;try{p=Circadian.get(d,s.days,"auto",+s.mode,bfOpts())}catch(x){continue}
     const w=Circadian.instants(d,p);
-    if(w.to>now)out.push({from:w.from,to:w.to,zone:p.zone,dest:p.dest,hotel:p.hotel});
+    if(w.to>now)out.push({date:d.date,from:w.from,to:w.to,zone:p.zone,dest:p.dest,hotel:p.hotel});
   }
   return out;
 }
@@ -597,16 +602,16 @@ function buildIcs(){
       "END:VEVENT");
   };
   const pair=(key,open,close,desc)=>{
-    mark("fw-"+key+"-open-"+open,open,"Окно питания",desc,
+    mark("fw-"+key+"-open",open,"Окно питания",desc,
       "Через час — окно питания","Окно питания открыто, голодание "+s.mode+" ч завершено");
-    mark("fw-"+key+"-close-"+close,close,"Конец окна",desc,
+    mark("fw-"+key+"-close",close,"Конец окна",desc,
       "Через час окно питания закроется","Окно питания закрыто, начинается голодание "+s.mode+" ч");
   };
   for(const w of planWindows())
-    pair("plan",w.from,w.to,"Голодание "+mode+" · местное время "+city(w.zone)+" ("+w.dest+")"+(w.hotel?" · сдвинуто под завтрак":""));
+    pair("plan-"+w.date,w.from,w.to,"Голодание "+mode+" · местное время "+city(w.zone)+" ("+w.dest+")"+(w.hotel?" · сдвинуто под завтрак":""));
   if(s.fastStart){
     const st=new Date(s.fastStart).getTime(),open=st+ +s.mode*36e5,close=open+(24-+s.mode)*36e5;
-    if(close>now)pair("fast",open,close,"Текущее голодание "+mode+".");
+    if(close>now)pair("active",open,close,"Текущее голодание "+mode+".");
   }
   L.push("END:VCALENDAR");
   return L.map(icsFold).join("\r\n")+"\r\n";
@@ -663,14 +668,14 @@ function drawBackup(){
 async function exportBackup(){
   const text=JSON.stringify({app:"fuel-window",v:1,saved:new Date().toISOString(),state:s});
   const name="fuel-window-"+new Date().toLocaleDateString("sv-SE")+".json",type="application/json";
-  s.backupAt=new Date().toISOString();save();drawBackup();
+  const done=()=>{s.backupAt=new Date().toISOString();save();drawBackup();drawMetrics()};
   try{
     const f=new File([text],name,{type});
-    if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f]});return}
+    if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f]});done();return}
   }catch(x){if(x&&x.name==="AbortError")return}
   const url=URL.createObjectURL(new Blob([text],{type}));
   const a=document.createElement("a");a.href=url;a.download=name;
-  document.body.appendChild(a);a.click();
+  document.body.appendChild(a);a.click();done();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},1000);
 }
 
@@ -807,9 +812,11 @@ q("#bfOn").onchange=e=>{s.bf.on=e.target.checked;drawBfRows();save();drawDay()};
 q("#bfFrom").onchange=e=>{s.bf.from=e.target.value||s.bf.from;e.target.value=s.bf.from;save();drawDay()};
 q("#bfTo").onchange=e=>{s.bf.to=e.target.value||s.bf.to;e.target.value=s.bf.to;save();drawDay()};
 q("#metric").onclick=()=>{
-  const fat=+q("#fat").value,weight=+q("#weight").value;
-  if(!fat){q("#fat").focus();return}
-  s.metrics.push({fat,weight:weight||null,date:new Date().toISOString()});
+  const fi=q("#fat"),wi=q("#weight"),fat=Number(fi.value),weight=wi.value===""?null:Number(wi.value);
+  fi.setCustomValidity("");wi.setCustomValidity("");
+  if(!Number.isFinite(fat)||fat<3||fat>70){fi.setCustomValidity("Введите процент жира от 3 до 70");fi.reportValidity();return}
+  if(weight!=null&&(!Number.isFinite(weight)||weight<30||weight>250)){wi.setCustomValidity("Введите вес от 30 до 250 кг");wi.reportValidity();return}
+  s.metrics.push({fat,weight,date:new Date().toISOString()});
   q("#fat").value="";q("#weight").value="";
   save();drawMetrics();
 };
