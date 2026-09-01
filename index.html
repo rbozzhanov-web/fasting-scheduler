@@ -427,8 +427,8 @@ function drawFast(){
     q("#ends").textContent=clock(end);
   }else if(phase==="eat"){
     pct=(now-end)/eatMs*100;
-    q("#fastPhase").textContent="Окно питания открыто";
-    q("#timer").textContent=dur(eatEnd-now);
+    q("#fastPhase").textContent="С начала окна питания";
+    q("#timer").textContent=dur(now-end);
     q("#fastSub").textContent=Math.floor(pct)+"% окна";
     q("#endLabel").textContent="Окно закроется";
     q("#ends").textContent=clock(eatEnd);
