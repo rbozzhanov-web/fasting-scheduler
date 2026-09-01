@@ -22,7 +22,7 @@
   --amber:#e5a133; --green:#2fa36b; --blue:#007aff; --red:#d23b2c;
   --good-bg:#dff3e7; --good-fg:#1d7a4d;
   --bad-bg:#fbe6e3; --bad-fg:#b3382a;
-  --warn-bg:#fdf3e6;
+  --warn-bg:#fdf3e6; --warn-fg:#8a5a12;
   --hero-a:#15745f; --hero-b:#0a3931;
   --on-hero:#fff; --on-hero-dim:#a8d8c8;
   --k-rest:#34c759; --k-duty:#0a84ff; --k-early:#ff9f0a; --k-night:#8e7cff;
@@ -36,7 +36,7 @@
   --accent:#28a689; --accent-ink:#79dfc2; --accent-soft:#123330;
   --good-bg:#123528; --good-fg:#5fd39a;
   --bad-bg:#3a201c; --bad-fg:#ff8f80;
-  --warn-bg:#2b2418;
+  --warn-bg:#2b2418; --warn-fg:#e6b877;
   --hero-a:#136452; --hero-b:#062421;
 }}
 
@@ -130,6 +130,15 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .win{font-size:clamp(30px,8.5vw,38px);font-weight:750;letter-spacing:-1.2px;color:var(--accent-ink);font-variant-numeric:tabular-nums;line-height:1.1;margin-top:8px}
 .winsub{font-size:14px;color:var(--dim);margin-top:4px}
 .winphone{font-size:14px;font-weight:600;color:var(--accent-ink);background:var(--accent-soft);border-radius:12px;padding:10px 12px;margin-top:10px}
+.hotelrow{font-size:14px;font-weight:600;color:var(--warn-fg);background:var(--warn-bg);border-radius:12px;padding:10px 12px;margin-top:10px;line-height:1.4}
+.sw{appearance:none;-webkit-appearance:none;flex:0 0 auto;width:52px;height:32px;padding:0;border:0;border-radius:99px;background:var(--surface-3);position:relative;transition:background .2s}
+.sw:checked{background:var(--accent)}
+.sw:before{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.28);transition:transform .2s}
+.sw:checked:before{transform:translateX(20px)}
+.row.rowcol{display:block}
+.times{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin-top:10px}
+.times i{color:var(--dim);font-style:normal}
+.times input{width:100%;min-width:0;min-height:46px;padding:12px 8px}
 .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px 14px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
 @media(min-width:560px){.stats{grid-template-columns:repeat(4,1fr)}}
 .stat{display:grid;gap:3px;min-width:0}
@@ -149,8 +158,8 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .mrow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .field{display:grid;gap:6px;min-width:0}
 .field>span{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--dim)}
-input[type=number],select{width:100%;font-size:16px;border:1px solid var(--line);background:var(--surface-2);border-radius:13px;padding:12px;min-height:48px}
-input[type=number]:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+input[type=number],input[type=time],select{width:100%;font-size:16px;border:1px solid var(--line);background:var(--surface-2);border-radius:13px;padding:12px;min-height:48px}
+input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
 
 /* ---------- settings rows ---------- */
 .row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-bottom:1px solid var(--line)}
@@ -244,6 +253,7 @@ input[type=number]:focus,select:focus{outline:2px solid var(--accent);outline-of
       <p class="win" id="win">—</p>
       <p class="winsub" id="winSub"></p>
       <p class="winphone" id="winPhone" hidden></p>
+      <p class="hotelrow" id="hotelRow" hidden></p>
       <div class="stats" id="stats"></div>
       <p class="note" id="note" hidden></p>
     </div>
@@ -268,6 +278,14 @@ input[type=number]:focus,select:focus{outline:2px solid var(--accent);outline-of
       <span class="btn btn-quiet mini">Выбрать<input id="pdf" type="file" accept="application/pdf" hidden></span>
     </label>
     <label class="row">
+      <span class="rl">Завтрак в гостинице<small>Вне базы окно открывается к завтраку, а не в полдень</small></span>
+      <input id="bfOn" type="checkbox" class="sw">
+    </label>
+    <div class="row rowcol" id="bfTimes">
+      <span class="rl">Часы завтрака<small>По местному времени гостиницы</small></span>
+      <span class="times"><input id="bfFrom" type="time" aria-label="Начало завтрака"><i>—</i><input id="bfTo" type="time" aria-label="Конец завтрака"></span>
+    </div>
+    <label class="row">
       <span class="rl">Цель</span>
       <select id="goal">
         <option value="fat">Снижение жира</option>
@@ -291,6 +309,7 @@ input[type=number]:focus,select:focus{outline:2px solid var(--accent);outline-of
 const q=s=>document.querySelector(s),K="fuel-v4";
 let s=JSON.parse(localStorage.getItem(K)||"{}");
 s.mode=s.mode||"16";s.context=s.context||"auto";s.days=s.days||[];s.metrics=s.metrics||[];s.goal=s.goal||"fat";
+s.bf=Object.assign({on:true,from:"06:30",to:"10:00"},s.bf);
 const save=()=>localStorage.setItem(K,JSON.stringify(s));
 
 const WD=["вс","пн","вт","ср","чт","пт","сб"];
@@ -315,6 +334,11 @@ const city=z=>((z||"").split("/")[1]||z||"—").replace(/_/g," ");
 const zoneOff=(zone,date)=>{try{return Circadian.off(zone,date)}catch(e){return devOff()}};
 const inZone=(ms,zone)=>{const o={hour:"2-digit",minute:"2-digit"};try{return new Date(ms).toLocaleTimeString("ru-RU",zone?Object.assign({timeZone:zone},o):o)}catch(e){return new Date(ms).toLocaleTimeString("ru-RU",o)}};
 const utc=h=>{const sign=h<0?"−":"+",a=Math.abs(h),H=Math.floor(a),M=Math.round((a-H)*60);return "UTC"+sign+H+(M?":"+String(M).padStart(2,"0"):"")};
+
+/* Завтрак в гостинице: часы указываются по местному времени гостиницы,
+   то есть в той же шкале, в которой считается окно питания. */
+const toMin=t=>{const m=/^(\d{1,2}):(\d{2})$/.exec(t||"");return m?+m[1]*60+ +m[2]:null};
+const bfOpts=()=>{const f=toMin(s.bf.from),t=toMin(s.bf.to);return{breakfast:{on:!!s.bf.on&&f!=null&&t!=null&&f<t,from:f,to:t}}};
 
 /* ---------- header ---------- */
 function drawHeader(){
@@ -409,7 +433,7 @@ function drawDay(){
   document.querySelectorAll("#ctxSeg button").forEach(b=>b.classList.toggle("on",b.dataset.x===s.context));
   document.querySelectorAll("#modeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.m===s.mode));
 
-  const d=s.days.find(x=>x.date===s.date),p=d?Circadian.get(d,s.days,s.context,+s.mode):null;
+  const d=s.days.find(x=>x.date===s.date),p=d?Circadian.get(d,s.days,s.context,+s.mode,bfOpts()):null;
   q("#ctxSeg").hidden=!has;
   q("#dayBox").hidden=!p;
   if(!p)return;
@@ -423,6 +447,9 @@ function drawDay(){
   const w=Circadian.instants(d,p),shown=q("#winPhone");
   shown.hidden=Math.abs(sOff-pOff)<1e-6;
   shown.textContent="На часах телефона ("+city(dz)+"): "+inZone(w.from,dz)+" – "+inZone(w.to,dz);
+  const hr=q("#hotelRow");
+  hr.hidden=!p.hotel;
+  if(p.hotel)hr.textContent="Завтрак в гостинице "+s.bf.from+"–"+s.bf.to+": окно открыто раньше, чтобы вы его не пропустили.";
   q("#stats").innerHTML=[
     ["Голодание",to+" → "+from],
     ["Питание",p.h+" ч"],
@@ -487,6 +514,9 @@ q("#days").onclick=e=>{
   s.date=b.dataset.d;s.context="auto";save();drawDay();
 };
 q("#goal").onchange=e=>{s.goal=e.target.value;save()};
+q("#bfOn").onchange=e=>{s.bf.on=e.target.checked;q("#bfTimes").hidden=!s.bf.on;save();drawDay()};
+q("#bfFrom").onchange=e=>{s.bf.from=e.target.value||s.bf.from;e.target.value=s.bf.from;save();drawDay()};
+q("#bfTo").onchange=e=>{s.bf.to=e.target.value||s.bf.to;e.target.value=s.bf.to;save();drawDay()};
 q("#metric").onclick=()=>{
   const fat=+q("#fat").value,weight=+q("#weight").value;
   if(!fat){q("#fat").focus();return}
@@ -517,6 +547,7 @@ function drawStatus(){
 }
 
 q("#goal").value=s.goal;
+q("#bfOn").checked=!!s.bf.on;q("#bfFrom").value=s.bf.from;q("#bfTo").value=s.bf.to;q("#bfTimes").hidden=!s.bf.on;
 drawStatus();drawAll();
 setInterval(drawFast,1000);
 
