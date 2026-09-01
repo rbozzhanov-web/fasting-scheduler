@@ -43,14 +43,14 @@ test('normalizeState: valid JSON with bad individual fields is fixed silently', 
   assert.equal('fastEnd' in state, false, 'orphan/invalid fastEnd is dropped too');
 });
 
-test('normalizeState: preserves a valid early fastEnd for the current cycle', () => {
-  const raw = JSON.stringify({ mode: '16', fastStart: '2026-01-01T00:00:00.000Z', fastEnd: '2026-01-01T12:00:00.000Z' });
+test('normalizeState: preserves a valid factual fastEnd', () => {
+  const raw = JSON.stringify({ mode: '16', fastStart: '2026-01-01T00:00:00.000Z', fastEnd: '2026-01-01T17:00:00.000Z' });
   const { state } = normalizeState(raw);
-  assert.equal(state.fastEnd, '2026-01-01T12:00:00.000Z');
+  assert.equal(state.fastEnd, '2026-01-01T17:00:00.000Z');
 });
 
-test('normalizeState: removes fastEnd outside the current planned fast', () => {
-  for (const fastEnd of ['2025-12-31T23:00:00.000Z', '2026-01-01T17:00:00.000Z', 'bad']) {
+test('normalizeState: removes fastEnd before start, after one day, or malformed', () => {
+  for (const fastEnd of ['2025-12-31T23:00:00.000Z', '2026-01-02T00:00:01.000Z', 'bad']) {
     const raw = JSON.stringify({ mode: '16', fastStart: '2026-01-01T00:00:00.000Z', fastEnd });
     const { state } = normalizeState(raw);
     assert.equal(state.fastEnd, undefined);
@@ -73,10 +73,11 @@ test('isValidDay / isValidMetric: sanity checks used by normalizeState and valid
   assert.equal(isValidMetric({ ...validMetric, weight: null }), true, 'weight is optional');
 });
 
-test('validFastEnd only accepts an end inside the current planned fasting interval', () => {
+test('validFastEnd accepts a factual end within one day regardless of current mode', () => {
   assert.equal(validFastEnd('2026-01-01T00:00:00Z', '16', '2026-01-01T12:00:00Z'), true);
-  assert.equal(validFastEnd('2026-01-01T00:00:00Z', '16', '2026-01-01T16:00:00Z'), true);
-  assert.equal(validFastEnd('2026-01-01T00:00:00Z', '16', '2026-01-01T17:00:00Z'), false);
+  assert.equal(validFastEnd('2026-01-01T00:00:00Z', '12', '2026-01-01T17:00:00Z'), true, 'mode changes do not rewrite history');
+  assert.equal(validFastEnd('2026-01-01T00:00:00Z', '16', '2026-01-02T00:00:00Z'), true);
+  assert.equal(validFastEnd('2026-01-01T00:00:00Z', '16', '2026-01-02T00:00:01Z'), false);
   assert.equal(validFastEnd(null, '16', '2026-01-01T12:00:00Z'), false);
 });
 
@@ -91,15 +92,15 @@ test('validateBackup: accepts a well-formed backup', () => {
   assert.doesNotThrow(() => validateBackup(goodBackup()));
 });
 
-test('validateBackup: accepts a backup carrying a valid early fastEnd', () => {
+test('validateBackup: accepts a backup carrying a factual fastEnd', () => {
   assert.doesNotThrow(() => validateBackup(goodBackup({
-    fastStart: '2026-01-01T00:00:00.000Z', fastEnd: '2026-01-01T12:00:00.000Z'
+    mode: '12', fastStart: '2026-01-01T00:00:00.000Z', fastEnd: '2026-01-01T17:00:00.000Z'
   })));
 });
 
-test('validateBackup: rejects an orphan or out-of-range fastEnd', () => {
+test('validateBackup: rejects an orphan or out-of-cycle fastEnd', () => {
   assert.throws(() => validateBackup(goodBackup({ fastEnd: '2026-01-01T12:00:00.000Z' })), /окончание/);
-  assert.throws(() => validateBackup(goodBackup({ fastStart: '2026-01-01T00:00:00.000Z', fastEnd: '2026-01-01T17:00:00.000Z' })), /окончание/);
+  assert.throws(() => validateBackup(goodBackup({ fastStart: '2026-01-01T00:00:00.000Z', fastEnd: '2026-01-02T00:00:01.000Z' })), /окончание/);
 });
 
 test('validateBackup: accepts a backup missing newer fields (e.g. parserWarnings)', () => {
