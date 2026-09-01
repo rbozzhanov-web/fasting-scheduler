@@ -141,6 +141,7 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .times{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin-top:10px}
 .times i{color:var(--dim);font-style:normal}
 .times input{width:100%;min-width:0;min-height:46px;padding:12px 8px}
+.calbtn{margin-top:10px;width:100%}
 .stats{display:flex;flex-wrap:wrap;gap:3px 14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:13.5px;font-weight:650}
 .stats i{font-style:normal;font-weight:600;color:var(--dim)}
 .note{display:flex;gap:10px;background:var(--warn-bg);border-radius:13px;padding:9px 11px;margin-top:8px;font-size:13px;line-height:1.4}
@@ -291,6 +292,10 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
       <span class="rl">Уведомления<small id="notifyHint">За час до события и в момент</small></span>
       <input id="notifyOn" type="checkbox" class="sw">
     </label>
+    <div class="row rowcol" id="icsRow">
+      <span class="rl">Напоминания в календарь<small id="icsHint">Окна питания по roster, сигнал за час и в момент</small></span>
+      <button id="ics" class="btn btn-quiet mini calbtn">Добавить напоминания</button>
+    </div>
     <label class="row">
       <span class="rl">Цель</span>
       <select id="goal">
@@ -481,6 +486,11 @@ function checkDue(){
 /* Старт, ручное время и смена интервала двигают все четыре момента. */
 function fastChanged(){s.fired={};save();drawFast();schedule();drawNotify()}
 
+function drawIcs(){
+  const n=planWindows().length+(s.fastStart?1:0);
+  q("#icsHint").textContent=n?"Окна питания на "+n+" "+(n%10===1&&n%100!==11?"день":n%10>1&&n%10<5&&(n%100<10||n%100>20)?"дня":"дней")+
+    " вперёд, сигнал за час и в момент":"Импортируй roster или запусти голодание";
+}
 function drawNotify(){
   const hint=q("#notifyHint"),box=q("#notifyOn");
   box.checked=!!s.notify&&canNotify()&&Notification.permission==="granted";
@@ -489,6 +499,83 @@ function drawNotify(){
   if(!standalone()){hint.textContent="Добавьте приложение на экран «Домой» — иначе iOS не разрешит уведомления";return}
   hint.textContent=canSchedule()?"За час до события и в момент, даже если приложение закрыто"
     :"Пока приходят только при открытом приложении";
+}
+
+/* ---------- календарь ----------
+   На iPhone это единственный способ получить сигнал при закрытом
+   приложении без своего сервера. Чтобы календарь не засоряло, на день
+   делаем одно событие на всё окно питания, помеченное как «свободен»,
+   и вешаем на него четыре будильника: за час и в момент открытия,
+   за час и в момент закрытия. */
+const icsAt=ms=>new Date(ms).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
+function icsFold(line){
+  const enc=new TextEncoder();
+  if(enc.encode(line).length<=72)return line;
+  let out="",cur="",n=0;
+  for(const ch of line){
+    const w=enc.encode(ch).length;
+    if(n+w>72){out+=cur+"\r\n ";cur="";n=1}
+    cur+=ch;n+=w;
+  }
+  return out+cur;
+}
+
+/* Окна берём из плана roster — по типу самого дня, а не по выбранному
+   вручную контексту, иначе разовая «Тренировка» уехала бы во все дни. */
+function planWindows(){
+  const now=Date.now(),out=[];
+  for(const d of s.days){
+    let p;try{p=Circadian.get(d,s.days,"auto",+s.mode,bfOpts())}catch(x){continue}
+    const w=Circadian.instants(d,p);
+    if(w.to>now)out.push({from:w.from,to:w.to,zone:p.zone,dest:p.dest,hotel:p.hotel});
+  }
+  return out;
+}
+
+function buildIcs(){
+  const L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Fuel Window//RU","CALSCALE:GREGORIAN",
+    "X-WR-CALNAME:Fuel Window","X-APPLE-CALENDAR-COLOR:#0F6F5C"];
+  const now=Date.now(),mode=s.mode+":"+(24-s.mode);
+  /* Две короткие метки на день вместо длинного блока: так в календаре
+     остаются тонкие засечки, а не восьмичасовая полоса на весь день.
+     Все будильники считаются от начала события — это понимает любой
+     календарь, в отличие от привязки к концу. */
+  const mark=(uid,at,title,desc,soon,now_)=>{
+    L.push("BEGIN:VEVENT","UID:"+uid+"@fuelwindow","DTSTAMP:"+icsAt(now),
+      "DTSTART:"+icsAt(at),"DTEND:"+icsAt(at+9e5),
+      "SUMMARY:"+title,"DESCRIPTION:"+desc,"TRANSP:TRANSPARENT",
+      "BEGIN:VALARM","ACTION:DISPLAY","TRIGGER:-PT1H","DESCRIPTION:"+soon,"END:VALARM",
+      "BEGIN:VALARM","ACTION:DISPLAY","TRIGGER:PT0S","DESCRIPTION:"+now_,"END:VALARM",
+      "END:VEVENT");
+  };
+  const pair=(key,open,close,desc)=>{
+    mark("fw-"+key+"-open-"+open,open,"Окно питания",desc,
+      "Через час — окно питания","Окно питания открыто, голодание "+s.mode+" ч завершено");
+    mark("fw-"+key+"-close-"+close,close,"Конец окна",desc,
+      "Через час окно питания закроется","Окно питания закрыто, начинается голодание "+s.mode+" ч");
+  };
+  for(const w of planWindows())
+    pair("plan",w.from,w.to,"Голодание "+mode+" · местное время "+city(w.zone)+" ("+w.dest+")"+(w.hotel?" · сдвинуто под завтрак":""));
+  if(s.fastStart){
+    const st=new Date(s.fastStart).getTime(),open=st+ +s.mode*36e5,close=open+(24-+s.mode)*36e5;
+    if(close>now)pair("fast",open,close,"Текущее голодание "+mode+".");
+  }
+  L.push("END:VCALENDAR");
+  return L.map(icsFold).join("\r\n")+"\r\n";
+}
+
+async function shareIcs(){
+  const count=planWindows().length+(s.fastStart?1:0);
+  if(!count){q("#icsHint").textContent="Нечего добавлять: запусти голодание или импортируй roster";return}
+  const text=buildIcs(),name="fuel-window.ics",type="text/calendar";
+  try{
+    const file=new File([text],name,{type});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file]});return}
+  }catch(x){if(x&&x.name==="AbortError")return}
+  const url=URL.createObjectURL(new Blob([text],{type}));
+  const a=document.createElement("a");a.href=url;a.download=name;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},1000);
 }
 
 /* ---------- roster day ---------- */
@@ -552,7 +639,7 @@ function drawMetrics(){
   ].filter(Boolean).join(" · ");
 }
 
-const drawAll=()=>{drawHeader();drawDay();drawMetrics();drawFast();drawNotify()};
+const drawAll=()=>{drawHeader();drawDay();drawMetrics();drawFast();drawNotify();drawIcs()};
 
 /* ---------- events ---------- */
 q("#fastBtn").onclick=()=>{
@@ -586,6 +673,7 @@ q("#days").onclick=e=>{
   s.date=b.dataset.d;s.context="auto";save();drawDay();
 };
 q("#goal").onchange=e=>{s.goal=e.target.value;save()};
+q("#ics").onclick=shareIcs;
 q("#notifyOn").onchange=async e=>{
   if(!e.target.checked){s.notify=false;save();schedule();drawNotify();return}
   e.target.checked=false;
