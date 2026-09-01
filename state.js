@@ -7,7 +7,17 @@
 const MODES=["12","14","16","18"],CONTEXTS=["auto","training","recovery"],GOALS=["fat","keep"];
 const DATE_RE=/^\d{4}-\d{2}-\d{2}$/;
 
-const isValidDay=d=>!!d&&typeof d==="object"&&typeof d.date==="string"&&DATE_RE.test(d.date)&&typeof d.code==="string"
+/* Формы YYYY-MM-DD мало: "2026-99-99" проходит регулярку, но ломает Intl
+   в circadian.js (RangeError: Invalid time value), а "2026-02-31" молча
+   превращается в 3 марта. Сверяем разбор с исходной строкой — так
+   отсеивается и то, и другое. */
+const isRealDate=v=>{
+  if(typeof v!=="string"||!DATE_RE.test(v))return false;
+  const t=Date.parse(v+"T00:00:00Z");
+  return Number.isFinite(t)&&new Date(t).toISOString().slice(0,10)===v;
+};
+
+const isValidDay=d=>!!d&&typeof d==="object"&&isRealDate(d.date)&&typeof d.code==="string"
   &&["rest","duty","early","night"].includes(d.kind)
   &&Array.isArray(d.times)&&d.times.every(t=>typeof t==="string")
   &&Array.isArray(d.airports)&&d.airports.every(a=>typeof a==="string")
@@ -38,6 +48,11 @@ function normalizeState(raw){
   s.notify=!!s.notify;
   s.fired=(s.fired&&typeof s.fired==="object"&&!Array.isArray(s.fired))?s.fired:{};
   s.parserWarnings=Array.isArray(s.parserWarnings)?s.parserWarnings:[];
+  /* s.date — выбранный в интерфейсе день, а не данные: он приходит из
+     резервной копии как есть и нигде больше не проверяется. Несуществующая
+     дата здесь роняет drawDay() на старте, поэтому чиним тихо, как и
+     остальные отдельные поля. */
+  if(s.date!=null&&!isRealDate(s.date))delete s.date;
   if(s.fastStart!=null&&isNaN(new Date(s.fastStart)))delete s.fastStart;
   return{state:s,corrupted};
 }
@@ -59,6 +74,6 @@ function validateBackup(d){
   if(!Array.isArray(st.metrics)||!st.metrics.every(isValidMetric))throw new Error("повреждены замеры в копии");
 }
 
-const State={MODES,CONTEXTS,GOALS,DATE_RE,isValidDay,isValidMetric,normalizeState,validateBackup};
+const State={MODES,CONTEXTS,GOALS,DATE_RE,isRealDate,isValidDay,isValidMetric,normalizeState,validateBackup};
 if(typeof module!=="undefined"&&module.exports)module.exports=State;else window.State=State;
 })();

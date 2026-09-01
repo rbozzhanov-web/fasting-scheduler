@@ -85,3 +85,41 @@ test('get(): rest day after a long stay away follows the adapted body clock inst
   assert.notEqual(p.body, 0, 'body clock is still adapted to London time on return');
   assert.notEqual(p.start, 720, 'window shifts away from noon to follow the misaligned body clock');
 });
+
+test('instants(): both endpoints keep their local wall-clock time across a spring-forward DST change', () => {
+  // Europe/London moves 01:00 GMT -> 02:00 BST on 2026-03-29. A window opening
+  // at 23:00 the evening before used to close at 08:00 local instead of 07:00,
+  // because one noon-derived offset was applied to both ends.
+  const w = Circadian.instants({ date: '2026-03-28' }, { zone: 'Europe/London', start: 23 * 60, h: 8 });
+  const local = ms => new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', dateStyle: 'short', timeStyle: 'short' }).format(new Date(ms));
+  assert.equal(local(w.from), '28/03/2026, 23:00');
+  assert.equal(local(w.to), '29/03/2026, 07:00');
+  assert.equal(w.to - w.from, 7 * 36e5, 'the lost hour shortens the real window, the local hours stay put');
+});
+
+test('instants(): both endpoints keep their local wall-clock time across a fall-back DST change', () => {
+  const w = Circadian.instants({ date: '2026-10-24' }, { zone: 'Europe/London', start: 23 * 60, h: 8 });
+  const local = ms => new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', dateStyle: 'short', timeStyle: 'short' }).format(new Date(ms));
+  assert.equal(local(w.from), '24/10/2026, 23:00');
+  assert.equal(local(w.to), '25/10/2026, 07:00');
+  assert.equal(w.to - w.from, 9 * 36e5, 'the repeated hour lengthens the real window');
+});
+
+test('instants(): a window before the transition on the transition day is not given the post-transition offset', () => {
+  // off() samples noon, by which point the change has happened - so the early
+  // hours of that date would otherwise be shifted by an hour.
+  const w = Circadian.instants({ date: '2026-03-29' }, { zone: 'Europe/London', start: 0, h: 8 });
+  const local = ms => new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', dateStyle: 'short', timeStyle: 'short' }).format(new Date(ms));
+  assert.equal(local(w.from), '29/03/2026, 00:00');
+});
+
+test('instants(): a zone without DST is unaffected on the day its destinations change clocks', () => {
+  const w = Circadian.instants({ date: '2026-03-29' }, { zone: 'Asia/Almaty', start: 12 * 60, h: 8 });
+  assert.equal(w.to - w.from, 8 * 36e5);
+  assert.equal(w.from, Date.parse('2026-03-29T07:00:00Z'), 'Almaty is UTC+5 year round');
+});
+
+test('offAt(): resolves the offset at a moment, not for a whole day', () => {
+  assert.equal(Circadian.offAt('Europe/London', Date.parse('2026-03-29T00:30:00Z')), 0);
+  assert.equal(Circadian.offAt('Europe/London', Date.parse('2026-03-29T01:30:00Z')), 1);
+});

@@ -8,7 +8,20 @@ TBS:"Asia/Tbilisi",BAK:"Asia/Baku",TAS:"Asia/Tashkent",FRU:"Asia/Bishkek",DME:"E
 JED:"Asia/Riyadh",MED:"Asia/Riyadh",RUH:"Asia/Riyadh",TLV:"Asia/Jerusalem",CAI:"Africa/Cairo",SSH:"Africa/Cairo"
 };
 const home="ALA",clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-const off=(zone,date)=>{const p=new Intl.DateTimeFormat("en-US",{timeZone:zone,timeZoneName:"shortOffset",hour:"2-digit"}).formatToParts(new Date(date+"T12:00:00Z")).find(x=>x.type==="timeZoneName")?.value||"GMT";const m=p.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);return m?(m[1]==="-"?-1:1)*(+m[2]+(+m[3]||0)/60):0};
+/* Смещение зоны в конкретный момент UTC. В день перевода стрелок у суток
+   два разных смещения, поэтому «смещение даты» — недостаточная единица:
+   всё, что должно попасть в календарь минута в минуту, считается отсюда. */
+const offAt=(zone,ms)=>{const p=new Intl.DateTimeFormat("en-US",{timeZone:zone,timeZoneName:"shortOffset",hour:"2-digit"}).formatToParts(new Date(ms)).find(x=>x.type==="timeZoneName")?.value||"GMT";const m=p.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);return m?(m[1]==="-"?-1:1)*(+m[2]+(+m[3]||0)/60):0};
+/* Смещение «этого дня» — по полудню, когда перевод стрелок (обычно ночью)
+   уже позади. Для арифметики телесных часов в stateAt() этого достаточно:
+   там сутки и так единица счёта. */
+const off=(zone,date)=>offAt(zone,Date.parse(date+"T12:00:00Z"));
+/* Стенное время зоны -> момент времени. Смещение зависит от искомого
+   момента, поэтому берём приближение по «наивному» UTC и уточняем один
+   раз — этого хватает на любой реальный перевод стрелок. В несуществующий
+   час (весенний перевод) время сдвигается вперёд, в задвоенный (осенний)
+   выбирается второе вхождение. */
+const zoned=(zone,ms)=>ms-offAt(zone,ms-offAt(zone,ms)*36e5)*36e5;
 const dayDiff=(a,b)=>Math.max(0,Math.round((new Date(a+"T12:00")-new Date(b+"T12:00"))/864e5));
 const move=(body,target,days)=>{const d=target-body;if(!d||!days)return body;const rate=d>0?1:1.5;return body+Math.sign(d)*Math.min(Math.abs(d),days*rate)};
 function stateAt(day,days){
@@ -52,7 +65,13 @@ function get(day,days,ctx,fast,opts={}){
  start=clamp(Math.round(start),0,1439);
  return{zone,dest,delta,body,adapt:Math.abs(st.adapted),bodyZone:st.bodyZone,shortStay:st.shortStay,start,h,note,kind,away,hotel,bf:bf||null,report,release,dutyUsed:report!=null};
 }
-function instants(day,p){const base=Date.parse(day.date+"T00:00:00Z"),o=off(p.zone,day.date)*36e5;return{from:base+p.start*6e4-o,to:base+(p.start+p.h*60)*6e4-o}}
-const Circadian={get,Z,off,instants,stateAt};
+/* Оба конца окна переводятся независимо: одно смещение на сутки уводило
+   закрытие на час, если между открытием и закрытием переводят стрелки
+   (окно 23:00-07:00 в Лондоне становилось 23:00-08:00). Окно задано
+   местным стенным временем — от него зависят и report time, и завтрак,
+   и потолок 21:00 — поэтому в день перевода стрелок сохраняются
+   местные часы, а фактическая длительность окна разово меняется на час. */
+function instants(day,p){const base=Date.parse(day.date+"T00:00:00Z");return{from:zoned(p.zone,base+p.start*6e4),to:zoned(p.zone,base+(p.start+p.h*60)*6e4)}}
+const Circadian={get,Z,off,offAt,zoned,instants,stateAt};
 if(typeof module!=="undefined"&&module.exports)module.exports=Circadian;else window.Circadian=Circadian;
 })();
