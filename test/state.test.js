@@ -111,3 +111,30 @@ test('validateBackup: rejects a missing/non-object state', () => {
   delete backup.state;
   assert.throws(() => validateBackup(backup));
 });
+
+test('isValidDay: a well-formed but impossible date is rejected - it makes Circadian.get() throw', () => {
+  assert.equal(isValidDay({ ...validDay, date: '2026-99-99' }), false);
+  assert.equal(isValidDay({ ...validDay, date: '2026-13-01' }), false);
+  assert.equal(isValidDay({ ...validDay, date: '2026-00-10' }), false);
+});
+
+test('isValidDay: a date that silently rolls over to the next month is rejected', () => {
+  assert.equal(isValidDay({ ...validDay, date: '2026-02-31' }), false, 'Date.parse turns this into 3 March');
+  assert.equal(isValidDay({ ...validDay, date: '2026-02-29' }), false, '2026 is not a leap year');
+  assert.equal(isValidDay({ ...validDay, date: '2024-02-29' }), true, '2024 is');
+});
+
+test('validateBackup: a backup carrying an impossible day is rejected whole', () => {
+  const backup = { app: 'fuel-window', v: 1, state: { mode: '16', context: 'auto', goal: 'fat', days: [{ ...validDay, date: '2026-99-99' }], metrics: [] } };
+  assert.throws(() => validateBackup(backup), /ростер/);
+});
+
+test('normalizeState: an impossible selected day is dropped - it would throw in drawDay() at startup', () => {
+  const { state } = normalizeState(JSON.stringify({ date: '2026-99-99' }));
+  assert.equal(state.date, undefined);
+});
+
+test('normalizeState: a real selected day is kept even when no roster is loaded', () => {
+  const { state } = normalizeState(JSON.stringify({ date: '2026-01-01' }));
+  assert.equal(state.date, '2026-01-01');
+});

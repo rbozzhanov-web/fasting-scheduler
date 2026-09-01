@@ -1,11 +1,16 @@
-const C="fuel-window-v26";
+const P="fuel-window-",C=P+"v27";
 const A=["./","./index.html","./roster-parser.js","./circadian.js","./timer.js","./state.js","./icon.svg","./icon-180.png","./icon-512.png","./manifest.webmanifest","./vendor/pdf.mjs","./vendor/pdf.worker.mjs","./vendor/PDFJS-LICENSE.txt","./sw.js"];
 
 self.addEventListener("install",e=>e.waitUntil(caches.open(C).then(c=>c.addAll(A))));
 
+/* Cache Storage общий на весь origin: на rbozzhanov-web.github.io рядом
+   живут другие проекты. Удаляем только свои прошлые версии по префиксу, а
+   не всё чужое — за вычетом двух известных имён. Все кэши приложения за всю
+   его историю называются fuel-window-v* либо fuel-ics, так что ничего
+   своего этот фильтр не оставляет. */
 self.addEventListener("activate",e=>e.waitUntil(
   caches.keys()
-    .then(keys=>Promise.all(keys.filter(k=>k!==C&&k!=="fuel-ics").map(k=>caches.delete(k))))
+    .then(keys=>Promise.all(keys.filter(k=>k.startsWith(P)&&k!==C).map(k=>caches.delete(k))))
     .then(()=>self.clients.claim())
 ));
 

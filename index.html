@@ -378,19 +378,28 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 <script src="timer.js"></script>
 <script src="state.js"></script>
 <script>
-const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v26";
+const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v27";
 const{isValidDay,isValidMetric,normalizeState,validateBackup}=State;
 /* Повреждённый localStorage не должен блокировать запуск: normalizeState()
    сбрасывает на дефолты при полном крахе JSON и тихо чинит отдельные
-   испорченные поля в остальных случаях — см. state.js. */
-const{state:s,corrupted}=normalizeState(localStorage.getItem(K));
-let dataNotice=corrupted?"Сохранённые данные повреждены и были сброшены. Если есть резервная копия — восстановите её ниже.":null;
+   испорченные поля в остальных случаях — см. state.js.
+   Само чтение тоже может бросить: при запрете на хранилище (Firefox с
+   блокировкой данных сайтов) обращение к localStorage бросает
+   SecurityError, а незащищённое чтение здесь убило бы весь скрипт —
+   вместе с таймером, планировщиком и регистрацией service worker ниже. */
+let storeBlocked=false,storedRaw=null;
+try{storedRaw=localStorage.getItem(K)}catch(e){storeBlocked=true}
+const{state:s,corrupted}=normalizeState(storedRaw);
+let dataNotice=storeBlocked?"Браузер запретил локальное хранилище — изменения не сохранятся. Разрешите сайту хранить данные или выйдите из приватного режима."
+  :corrupted?"Сохранённые данные повреждены и были сброшены. Если есть резервная копия — восстановите её ниже.":null;
 const save=()=>{
   try{
     localStorage.setItem(K,JSON.stringify(s));
+    storeBlocked=false;
     if(dataNotice){dataNotice=null;drawBackup()}
   }catch(e){
-    dataNotice="Не удалось сохранить изменения — освободите место в браузере или отключите приватный режим.";
+    dataNotice=storeBlocked?"Браузер запретил локальное хранилище — изменения не сохранятся. Разрешите сайту хранить данные или выйдите из приватного режима."
+      :"Не удалось сохранить изменения — освободите место в браузере или отключите приватный режим.";
     drawBackup();
   }
 };
@@ -567,7 +576,7 @@ function checkDue(){
 function fastChanged(){s.fired={};s.icsStale=true;save();drawFast();schedule();drawNotify();drawIcs()}
 
 function drawIcs(){
-  const n=planWindows().length+(s.fastStart?1:0);
+  const n=icsCount();
   const word=n%10===1&&n%100!==11?"день":n%10>1&&n%10<5&&(n%100<10||n%100>20)?"дня":"дней";
   q("#icsHint").innerHTML=!n?"Импортируй roster или запусти голодание"
     :s.icsStale?'<span class="attn">Roster обновлён — добавьте напоминания заново, на '+n+" "+word+" вперёд.</span>"
@@ -601,6 +610,12 @@ function icsFold(line){
   }
   return out+cur;
 }
+
+/* Истёкший цикл buildIcs() не выгружает, поэтому и считаться он не должен:
+   иначе интерфейс обещает день вперёд, а календарь приходит пустым.
+   close = fastStart + 24 ч независимо от режима (голодание + окно). */
+const activeFast=()=>!!s.fastStart&&new Date(s.fastStart).getTime()+864e5>Date.now();
+const icsCount=()=>planWindows().length+(activeFast()?1:0);
 
 /* Окна берём из плана roster — по типу самого дня, а не по выбранному
    вручную контексту, иначе разовая «Тренировка» уехала бы во все дни. */
@@ -638,9 +653,9 @@ function buildIcs(){
   };
   for(const w of planWindows())
     pair("plan-"+w.date,w.from,w.to,"Голодание "+mode+" · местное время "+city(w.zone)+" ("+w.dest+")"+(w.hotel?" · сдвинуто под завтрак":""));
-  if(s.fastStart){
+  if(activeFast()){
     const st=new Date(s.fastStart).getTime(),open=st+ +s.mode*36e5,close=open+(24-+s.mode)*36e5;
-    if(close>now)pair("active",open,close,"Текущее голодание "+mode+".");
+    pair("active",open,close,"Текущее голодание "+mode+".");
   }
   L.push("END:VCALENDAR");
   return L.map(icsFold).join("\r\n")+"\r\n";
@@ -665,8 +680,7 @@ async function openIcs(){
 }
 const ICS_URL="./reminders.ics";
 function ready(){
-  const count=planWindows().length+(s.fastStart?1:0);
-  if(count)return true;
+  if(icsCount())return true;
   q("#icsHint").textContent="Нечего добавлять: запусти голодание или импортируй roster";
   return false;
 }
@@ -731,7 +745,14 @@ function drawDay(){
     b.classList.toggle("on",on);b.setAttribute("aria-pressed",String(on));
   });
 
-  const d=s.days.find(x=>x.date===s.date),p=d?Circadian.get(d,s.days,s.context,+s.mode,bfOpts()):null;
+  /* Circadian.get() бросает на дне, который не удалось нормализовать
+     (несуществующая дата -> Invalid time value в Intl). planWindows() это
+     уже переживает; здесь незащищённый бросок уходил из drawAll() наружу и
+     оставлял без setInterval, schedule() и регистрации service worker всё,
+     что идёт ниже по скрипту. День без расчёта — просто скрытая карточка. */
+  const d=s.days.find(x=>x.date===s.date);
+  let p=null;
+  if(d){try{p=Circadian.get(d,s.days,s.context,+s.mode,bfOpts())}catch(x){p=null}}
   q("#dayBox").hidden=!p;
   if(!p)return;
   const from=hm(p.start),to=hm(p.start+p.h*60);
@@ -895,7 +916,8 @@ q("#pdf").onchange=async e=>{
 };
 q("#clear").onclick=()=>{
   if(!confirm("Удалить все локальные данные приложения?"))return;
-  localStorage.removeItem(K);indexedDB.deleteDatabase("fuel-pdf");location.reload();
+  try{localStorage.removeItem(K)}catch(x){}
+  indexedDB.deleteDatabase("fuel-pdf");location.reload();
 };
 
 function drawStatus(){
