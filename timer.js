@@ -5,16 +5,11 @@
 const dur=ms=>[ms/36e5,ms/6e4%60,ms/1e3%60].map(x=>String(Math.max(0,Math.floor(x))).padStart(2,"0")).join(":");
 const STORE_KEY="fuel-v4";
 
-/* Для самого действия «завершить сейчас»: разрешено только до планового
-   конца текущего режима. */
 const validEarlyEnd=(start,nominalEnd,value)=>{
   if(!start||!value)return null;
   const d=new Date(value);
   return Number.isFinite(d.getTime())&&d>=start&&d<=nominalEnd?d:null;
 };
-/* После того как факт уже записан, он остаётся фактом даже если пользователь
-   позже сменил режим. Ограничение 24 ч защищает от повреждённой даты и
-   покрывает все поддерживаемые режимы. */
 const validActualEnd=(start,value)=>{
   if(!start||!value)return null;
   const d=new Date(value);
@@ -66,6 +61,12 @@ function readState(){
 function writeState(s){
   try{localStorage.setItem(STORE_KEY,JSON.stringify(s));return true}catch(e){return false}
 }
+function stampCurrentZone(state,now){
+  try{
+    state.fastTz=Intl.DateTimeFormat().resolvedOptions().timeZone||"";
+    state.fastTzOff=-now.getTimezoneOffset()/60;
+  }catch(e){delete state.fastTz;delete state.fastTzOff}
+}
 
 async function rescheduleFromEarlyEnd(state){
   if(typeof navigator==="undefined"||!("serviceWorker"in navigator))return;
@@ -101,17 +102,15 @@ function finishEarly(){
   return true;
 }
 
-function startFreshCycle(){
-  const state=readState(),now=new Date();
-  state.fastStart=now.toISOString();
+function startFreshCycle(at){
+  const state=readState(),now=new Date(),requested=at?new Date(at):now;
+  if(!Number.isFinite(requested.getTime()))return false;
+  const start=requested>now?now:requested;
+  state.fastStart=start.toISOString();
   delete state.fastEnd;
   state.fired={};
   state.icsStale=true;
-  try{
-    const zone=Intl.DateTimeFormat().resolvedOptions().timeZone||"";
-    state.fastTz=zone;
-    state.fastTzOff=-now.getTimezoneOffset()/60;
-  }catch(e){delete state.fastTz;delete state.fastTzOff}
+  stampCurrentZone(state,now);
   return writeState(state);
 }
 
@@ -185,8 +184,18 @@ function installBrowserGuards(){
     clearEarlyEnd();
   },true);
 
+  /* Ручное новое начало выполняем сами, а не сначала удаляем fastEnd из
+     localStorage: старый index.html держит свою копию state в памяти и мог
+     тут же записать прежний fastEnd обратно уже с новым fastStart. */
   document.addEventListener("click",e=>{
-    if(e.target&&e.target.closest&&e.target.closest("#applyStart"))clearEarlyEnd();
+    const b=e.target&&e.target.closest&&e.target.closest("#applyStart");
+    if(!b)return;
+    const input=document.querySelector("#startAt"),value=input&&input.value;
+    if(!value)return;
+    const requested=new Date(value);
+    if(!Number.isFinite(requested.getTime()))return;
+    e.preventDefault();e.stopImmediatePropagation();
+    if(startFreshCycle(requested))setTimeout(()=>location.reload(),40);
   },true);
 
   document.addEventListener("DOMContentLoaded",()=>{
@@ -220,6 +229,21 @@ function installBrowserGuards(){
       window.buildIcs=patched;
     }
 
+    /* После зафиксированного окончания подпись шкалы показывает фактическую
+       длительность, а не прежнюю цель режима. */
+    if(typeof window.drawFast==="function"&&!window.drawFast.__fuelActualLabelPatched){
+      const originalDraw=window.drawFast;
+      const patchedDraw=function(){
+        originalDraw();
+        const state=readState(),r=computeFastState(state.fastStart,state.mode,new Date(),state.fastEnd);
+        if(r.hasActualEnd){
+          const label=document.querySelector("#labFast");
+          if(label){const h=Math.round(r.actualFastMs/36e5*10)/10;label.textContent="Голодание "+h+" ч";}
+        }
+      };
+      patchedDraw.__fuelActualLabelPatched=true;
+      window.drawFast=patchedDraw;
+    }
     if(typeof window.drawFast==="function")window.drawFast();
   });
 
