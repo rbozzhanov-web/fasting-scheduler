@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { dur, computeFastState, actionLabel, closeNotificationBody, validEarlyEnd } = require('../timer.js');
+const { dur, computeFastState, actionLabel, closeNotificationBody, validEarlyEnd, cycleEventTimes, patchActiveIcs } = require('../timer.js');
 
 test('dur() formats a millisecond delta as HH:MM:SS', () => {
   assert.equal(dur(0), '00:00:00');
@@ -78,7 +78,7 @@ test('elapsed counter reaches maximum just before transitioning to over', () => 
 
 test('early completion immediately opens the eating window', () => {
   const start = new Date('2026-03-10T20:00:00Z');
-  const earlyEnd = new Date('2026-03-11T08:00:00Z'); // 12h actual vs 16h planned
+  const earlyEnd = new Date('2026-03-11T08:00:00Z');
   const now = new Date('2026-03-11T08:30:00Z');
   const r = computeFastState(start.toISOString(), '16', now, earlyEnd.toISOString());
   assert.equal(r.phase, 'eat');
@@ -97,6 +97,68 @@ test('early completion preserves the configured eating-window duration', () => {
     const r = computeFastState(start.toISOString(), mode, earlyEnd, earlyEnd.toISOString());
     assert.equal(r.phase, 'eat');
     assert.equal(r.eatEnd - r.end, (24 - +mode) * 3600e3);
+  }
+});
+
+test('event times use the actual early end, not the nominal fasting end', () => {
+  const start = '2026-03-10T20:00:00.000Z';
+  const earlyEnd = '2026-03-11T08:00:00.000Z';
+  const t = cycleEventTimes(start, '16', earlyEnd);
+  assert.equal(new Date(t.open).toISOString(), earlyEnd);
+  assert.equal(new Date(t.close).toISOString(), '2026-03-11T16:00:00.000Z');
+  assert.equal(t.actualFastMs, 12 * 3600e3);
+  assert.equal(t.endedEarly, true);
+});
+
+test('event times remain nominal when there is no early completion', () => {
+  const t = cycleEventTimes('2026-03-10T20:00:00.000Z', '16');
+  assert.equal(new Date(t.open).toISOString(), '2026-03-11T12:00:00.000Z');
+  assert.equal(new Date(t.close).toISOString(), '2026-03-11T20:00:00.000Z');
+  assert.equal(t.endedEarly, false);
+});
+
+test('active calendar pair is moved to actual early open/close', () => {
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'BEGIN:VEVENT',
+    'UID:fw-active-open@fuelwindow',
+    'DTSTART:20260311T120000Z',
+    'DTEND:20260311T121500Z',
+    'DESCRIPTION:Окно питания открыто, голодание 16 ч завершено',
+    'END:VEVENT',
+    'BEGIN:VEVENT',
+    'UID:fw-active-close@fuelwindow',
+    'DTSTART:20260311T200000Z',
+    'DTEND:20260311T201500Z',
+    'DESCRIPTION:Окно питания закрыто, начинается голодание 16 ч',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n') + '\r\n';
+  const state = { fastStart: '2026-03-10T20:00:00.000Z', fastEnd: '2026-03-11T08:00:00.000Z', mode: '16' };
+  const originalNow = Date.now;
+  Date.now = () => Date.parse('2026-03-11T09:00:00Z');
+  try {
+    const out = patchActiveIcs(ics, state);
+    assert.match(out, /DTSTART:20260311T080000Z/);
+    assert.match(out, /DTSTART:20260311T160000Z/);
+    assert.doesNotMatch(out, /DTSTART:20260311T120000Z/);
+    assert.doesNotMatch(out, /начинается голодание 16 ч/);
+  } finally {
+    Date.now = originalNow;
+  }
+});
+
+test('expired early-finished active calendar pair is removed', () => {
+  const ics = 'BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:fw-active-open@fuelwindow\r\nDTSTART:20260311T120000Z\r\nDTEND:20260311T121500Z\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:fw-active-close@fuelwindow\r\nDTSTART:20260311T200000Z\r\nDTEND:20260311T201500Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n';
+  const state = { fastStart: '2026-03-10T20:00:00.000Z', fastEnd: '2026-03-11T08:00:00.000Z', mode: '16' };
+  const originalNow = Date.now;
+  Date.now = () => Date.parse('2026-03-11T17:00:00Z');
+  try {
+    const out = patchActiveIcs(ics, state);
+    assert.doesNotMatch(out, /fw-active-open/);
+    assert.doesNotMatch(out, /fw-active-close/);
+  } finally {
+    Date.now = originalNow;
   }
 });
 
