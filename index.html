@@ -15,8 +15,8 @@
 /* ---------- tokens ---------- */
 :root{
   color-scheme:light dark;
-  --bg:#eef1f6; --bg-blur:rgba(240,242,246,.72);
-  --surface:rgba(255,255,255,.58); --surface-2:rgba(255,255,255,.40); --surface-3:rgba(255,255,255,.30);
+  --bg:#edf0f5; --bg-blur:rgba(246,247,251,.72);
+  --surface:rgba(255,255,255,.72); --surface-2:rgba(255,255,255,.52); --surface-3:rgba(255,255,255,.36);
   --text:#111722; --dim:#5c6473; --line:rgba(17,23,34,.08);
   --accent:#1f5288; --on-accent:#fff; --on-accent-dim:rgba(255,255,255,.85);
   --accent-ink:#1a4676; --accent-soft:rgba(31,82,136,.14);
@@ -29,13 +29,15 @@
   --veil:rgba(255,255,255,.14); --veil-2:rgba(255,255,255,.24); --veil-line:rgba(255,255,255,.15);
   --track:rgba(255,255,255,.10); --zone:rgba(242,169,62,.46); --pick:1;
   --k-rest:#2f7d52; --k-duty:#3d6f9e; --k-early:#9a5f11; --k-night:#6a5ca8;
-  --glass-blur:blur(24px) saturate(180%); --glass-hl:rgba(255,255,255,.75); --glass-border:rgba(255,255,255,.55);
-  --glass-shadow:0 1px 1px rgba(255,255,255,.5) inset,0 10px 30px rgba(20,35,60,.10);
-  /* Три уровня материала: свечение фона -> стеклянный контейнер (--surface,
-     единственный слой с backdrop-filter) -> элементы управления внутри него.
-     Утопленные (--sunken: поля ввода, дорожка сегментов) и приподнятые
-     (--ctrl: кнопки, чипы дней, выбранный сегмент) непрозрачны: вложенный
-     blur съедал бы иерархию и кадры при прокрутке на старых iPhone. */
+  --glass-blur:blur(28px) saturate(180%); --glass-hl:rgba(255,255,255,.75); --glass-border:rgba(255,255,255,.58);
+  --material-border:rgba(17,23,34,.08); --material-shadow:0 1px 0 rgba(255,255,255,.72) inset,0 10px 26px rgba(20,35,60,.08);
+  --glass-control:rgba(255,255,255,.64); --glass-control-border:rgba(255,255,255,.82);
+  --glass-control-shadow:0 1px 0 rgba(255,255,255,.96) inset,0 -1px 0 rgba(17,23,34,.05) inset,0 5px 14px rgba(20,35,60,.14);
+  --glass-spec:linear-gradient(180deg,rgba(255,255,255,.72),rgba(255,255,255,.16) 46%,rgba(255,255,255,0) 70%);
+  /* iOS 26 разделяет слои: карточки остаются спокойным материалом контента,
+     а Liquid Glass принадлежит навигации и элементам управления. Blur есть
+     только у плавающего chrome; компактные контролы получают свет, кромку и
+     тень без каскада вложенных полноэкранных проходов GPU. */
   --sunken:rgba(15,22,36,.055); --sunken-line:rgba(17,23,34,.12);
   --ctrl:rgba(255,255,255,.92); --ctrl-line:rgba(17,23,34,.10);
   --ctrl-shadow:0 1px 2px rgba(20,35,60,.10);
@@ -44,12 +46,12 @@
   --spec:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0) 55%);
   --spec-hero:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.05) 16%,rgba(255,255,255,0) 46%);
   --focus:#12406f;
-  --r:22px;
+  --r:24px;
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
 }
 @media(prefers-color-scheme:dark){:root{
-  --bg:#08090c; --bg-blur:rgba(8,9,12,.68);
-  --surface:rgba(38,41,48,.55); --surface-2:rgba(255,255,255,.06); --surface-3:rgba(255,255,255,.10);
+  --bg:#06070a; --bg-blur:rgba(13,14,18,.68);
+  --surface:rgba(29,31,37,.76); --surface-2:rgba(255,255,255,.075); --surface-3:rgba(255,255,255,.11);
   --text:#eff2f7; --dim:#a0a9b6; --line:rgba(255,255,255,.09);
   --accent:#6fa8e0; --on-accent:#0b1723; --on-accent-dim:rgba(11,23,35,.75);
   --accent-ink:#93c2f0; --accent-soft:rgba(111,168,224,.16);
@@ -62,8 +64,11 @@
   --k-rest:#5cc48c; --k-duty:#7db4e6; --k-early:#e8b05a; --k-night:#a79ae0;
   --veil:rgba(255,255,255,.14); --veil-2:rgba(255,255,255,.24); --veil-line:rgba(255,255,255,.14);
   --track:rgba(255,255,255,.12); --zone:rgba(242,169,62,.44); --pick:1;
-  --glass-blur:blur(24px) saturate(160%); --glass-hl:rgba(255,255,255,.16); --glass-border:rgba(255,255,255,.12);
-  --glass-shadow:0 1px 1px rgba(255,255,255,.07) inset,0 10px 30px rgba(0,0,0,.45);
+  --glass-blur:blur(28px) saturate(170%); --glass-hl:rgba(255,255,255,.16); --glass-border:rgba(255,255,255,.13);
+  --material-border:rgba(255,255,255,.10); --material-shadow:0 1px 0 rgba(255,255,255,.075) inset,0 12px 28px rgba(0,0,0,.30);
+  --glass-control:rgba(65,69,80,.58); --glass-control-border:rgba(255,255,255,.18);
+  --glass-control-shadow:0 1px 0 rgba(255,255,255,.20) inset,0 -1px 0 rgba(0,0,0,.18) inset,0 6px 16px rgba(0,0,0,.32);
+  --glass-spec:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.055) 48%,rgba(255,255,255,0) 72%);
   --sunken:rgba(6,8,12,.55); --sunken-line:rgba(255,255,255,.07);
   --ctrl:rgba(56,61,72,.92); --ctrl-line:rgba(255,255,255,.14);
   --ctrl-shadow:0 1px 2px rgba(0,0,0,.35);
@@ -79,17 +84,20 @@
   :root{
     --glass-blur:none; --bg-blur:#f1f3f8;
     --surface:#fff; --surface-2:#eef1f6; --surface-3:#e5eaf2;
-    --sunken:#e9edf4; --ctrl:#fff;
-    --glass-border:rgba(17,23,34,.14); --glass-hl:transparent;
+    --sunken:#e9edf4; --ctrl:#fff; --glass-control:#fff;
+    --glass-border:rgba(17,23,34,.14); --glass-control-border:rgba(17,23,34,.14); --glass-hl:transparent; --glass-spec:none;
     --veil:rgba(255,255,255,.20); --veil-2:rgba(255,255,255,.34);
   }
   @media(prefers-color-scheme:dark){:root{
     --bg-blur:#0d0f13;
     --surface:#191c22; --surface-2:#1e222a; --surface-3:#252a34;
-    --sunken:#101318; --ctrl:#2b303a;
-    --glass-border:rgba(255,255,255,.18); --glass-hl:transparent;
+    --sunken:#101318; --ctrl:#2b303a; --glass-control:#2b303a;
+    --glass-border:rgba(255,255,255,.18); --glass-control-border:rgba(255,255,255,.18); --glass-hl:transparent;
     --veil:rgba(255,255,255,.16); --veil-2:rgba(255,255,255,.28);
   }}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;transition-duration:0s!important;animation-duration:0s!important;animation-iteration-count:1!important}
 }
 
 /* ---------- base ---------- */
@@ -104,24 +112,24 @@ body:before{content:"";position:fixed;inset:-15vh -15vw;z-index:-1;pointer-event
     radial-gradient(38% 32% at 82% 92%,color-mix(in srgb,var(--k-rest) 42%,transparent),transparent 70%),
     radial-gradient(34% 30% at 6% 90%,color-mix(in srgb,var(--accent) 42%,transparent),transparent 70%);
   filter:blur(60px) saturate(160%);opacity:.55}
-@media(prefers-color-scheme:dark){body:before{opacity:.4}}
+@media(prefers-color-scheme:dark){body:before{opacity:.5}}
 @media(prefers-reduced-transparency:reduce){body:before{opacity:.14;filter:blur(90px)}}
 h1,h2,p{margin:0}
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}p,span,b,small{overflow-wrap:anywhere}.tmrow>*{min-width:0}.tmrow strong{white-space:nowrap}.row>*{min-width:0}
 
 /* ---------- header ---------- */
-.hdr{position:sticky;top:0;z-index:20;background:var(--bg-blur);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px;border-bottom:1px solid var(--glass-border)}
+.hdr{position:sticky;top:0;z-index:20;background-color:var(--bg-blur);background-image:var(--spec);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px;border-bottom:1px solid var(--glass-border);box-shadow:0 10px 28px rgba(10,18,32,.06)}
 .hdr-in{max-width:640px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
 h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-space:nowrap}
 .hdr-sub{font-size:13px;color:var(--dim);margin-top:2px}
-.gear{flex:0 0 auto;width:42px;height:42px;padding:0;border:1px solid var(--ctrl-line);border-radius:14px;background:var(--ctrl);box-shadow:var(--ctrl-shadow);color:var(--accent-ink);display:grid;place-items:center;transition:transform .12s ease}
+.gear{flex:0 0 auto;width:42px;height:42px;padding:0;border:1px solid var(--glass-control-border);border-radius:21px;background-color:var(--glass-control);background-image:var(--glass-spec);box-shadow:var(--glass-control-shadow);color:var(--accent-ink);display:grid;place-items:center;transition:transform .12s ease,box-shadow .2s ease}
 .gear:active{transform:scale(.94)}
 .gear svg{width:22px;height:22px}
 .sheet{position:fixed;inset:0;z-index:40;margin:0;width:100%;height:100%;max-width:none;max-height:none;border:none;padding:0;background:var(--bg-blur);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);color:var(--text);overflow-y:auto;-webkit-overflow-scrolling:touch;visibility:hidden;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1),visibility .3s}
 .sheet.open{visibility:visible;transform:none}
 .sheet::backdrop{background:transparent}
-.sheet-hd{position:sticky;top:0;z-index:2;background-color:var(--bg-blur);background-image:var(--spec);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px;border-bottom:1px solid var(--glass-border)}
+.sheet-hd{position:sticky;top:0;z-index:2;background-color:var(--bg-blur);background-image:var(--spec);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px;border-bottom:1px solid var(--glass-border);box-shadow:0 10px 28px rgba(10,18,32,.07)}
 .sheet-in{max-width:640px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .sheet-in h2{font-size:22px;font-weight:750;letter-spacing:-.5px}
 .sheet-body{max-width:640px;margin:0 auto;padding:0 16px calc(env(safe-area-inset-bottom,0px) + 40px)}
@@ -130,14 +138,13 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .wrap{max-width:640px;margin:0 auto;padding:0 16px calc(env(safe-area-inset-bottom,0px) + 40px)}
 .slabel{font-size:12px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--dim);margin:22px 6px 8px}
 .slabel:first-child{margin-top:16px}
-.card{background:var(--surface);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--glass-border);border-radius:var(--r);padding:14px;box-shadow:var(--glass-shadow)}
-/* Лист настроек сам по себе стекло во весь экран: карточкам внутри него
-   размывать уже размытое незачем — глазу это ничего не добавляет, а
-   стоит по полноэкранному проходу GPU на каждую карточку при прокрутке. */
+.card{background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;border:1px solid var(--material-border);border-radius:var(--r);padding:14px;box-shadow:var(--material-shadow)}
+/* Карточки — слой контента, а не Liquid Glass: спокойная полупрозрачная
+   заливка сохраняет глубину, не конкурируя с плавающими контролами. */
 .sheet .card{backdrop-filter:none;-webkit-backdrop-filter:none}
 
 /* ---------- hero: fasting ---------- */
-.hero{position:relative;overflow:hidden;background:linear-gradient(158deg,var(--hero-a),var(--hero-b));color:var(--on-hero);border:1px solid rgba(255,255,255,.18);border-radius:26px;padding:14px;box-shadow:0 1px 1px rgba(255,255,255,.25) inset,0 14px 32px rgba(12,32,58,.30)}
+.hero{position:relative;overflow:hidden;background:linear-gradient(158deg,var(--hero-a),var(--hero-b));color:var(--on-hero);border:1px solid rgba(255,255,255,.18);border-radius:28px;padding:14px;box-shadow:0 1px 1px rgba(255,255,255,.25) inset,0 16px 34px rgba(12,32,58,.28)}
 .hero:before{content:"";position:absolute;inset:0;background:var(--spec-hero);pointer-events:none}
 .hero:after{content:"";position:absolute;left:14px;right:14px;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);pointer-events:none}
 .hero-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -167,29 +174,30 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .startrow .btn{flex:0 0 auto}
 
 /* ---------- buttons ---------- */
-.btn{border:0;border-radius:14px;padding:13px 16px;min-height:48px;font-weight:650;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s ease,opacity .15s}
+.btn{border:0;border-radius:24px;padding:13px 16px;min-height:48px;font-weight:650;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s ease,opacity .15s}
 .btn:active{transform:scale(.985)}
-.btn-act{width:100%;background-color:var(--act);background-image:var(--spec);color:var(--on-act);box-shadow:0 1px 2px rgba(0,0,0,.18)}
+.btn-act{width:100%;background-color:var(--act);background-image:var(--glass-spec);color:var(--on-act);box-shadow:0 1px 0 rgba(255,255,255,.68) inset,0 5px 14px rgba(0,0,0,.20)}
 .acts{display:flex;gap:8px;margin-top:12px}
 .acts .btn-act{flex:1 1 auto}
 .acts .btn-ghost{flex:0 0 auto;font-size:14px}
-.btn-blue{width:100%;margin-top:14px;background-color:var(--accent);background-image:var(--spec);color:var(--on-accent);box-shadow:0 1px 2px rgba(0,0,0,.18)}
-.btn-ghost{background:var(--veil);color:var(--on-hero);border:1px solid var(--veil-2)}
-.btn-quiet{background:var(--ctrl);color:var(--text);border:1px solid var(--ctrl-line);box-shadow:var(--ctrl-shadow)}
+.btn-blue{width:100%;margin-top:14px;background-color:var(--accent);background-image:var(--glass-spec);color:var(--on-accent);box-shadow:0 1px 0 rgba(255,255,255,.30) inset,0 5px 14px rgba(0,0,0,.20)}
+.btn-ghost{background-color:var(--veil);background-image:var(--glass-spec);color:var(--on-hero);border:1px solid var(--veil-2);box-shadow:0 1px 0 rgba(255,255,255,.18) inset,0 4px 12px rgba(0,0,0,.12)}
+.btn-quiet{background-color:var(--glass-control);background-image:var(--glass-spec);color:var(--text);border:1px solid var(--glass-control-border);box-shadow:var(--glass-control-shadow)}
 .btn-link{width:100%;background:none;color:var(--on-hero-dim);min-height:38px;padding:8px;font-size:13px;font-weight:600;margin-top:4px}
 .btn-danger{background:var(--bad-bg);color:var(--bad-fg);border:1px solid var(--ctrl-line)}
-.mini{min-height:38px;padding:8px 14px;font-size:14px;border-radius:11px}
+.mini{min-height:38px;padding:8px 14px;font-size:14px;border-radius:19px}
 
 /* ---------- segmented ---------- */
-.seg{display:flex;gap:4px;background:var(--sunken);border:1px solid var(--sunken-line);padding:3px;border-radius:14px;margin-top:10px}
-.seg button{flex:1 1 0;min-width:0;border:0;background:none;color:var(--dim);font-size:13px;font-weight:650;padding:7px 4px;min-height:36px;border-radius:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .15s,color .15s}
-.seg button.on{background-color:var(--ctrl);background-image:var(--spec);color:var(--text);box-shadow:var(--ctrl-shadow)}
+.seg{display:flex;gap:4px;background:var(--sunken);border:1px solid var(--sunken-line);padding:3px;border-radius:22px;margin-top:10px}
+.seg button{flex:1 1 0;min-width:0;border:0;background:none;color:var(--dim);font-size:13px;font-weight:650;padding:7px 4px;min-height:36px;border-radius:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .15s,color .15s}
+.seg button.on{background-color:var(--glass-control);background-image:var(--glass-spec);color:var(--text);box-shadow:var(--glass-control-shadow)}
 #ctxSeg button{font-size:clamp(11px,3.1vw,13px)}
 
 /* ---------- day strip ---------- */
 .days{display:flex;gap:7px;overflow-x:auto;padding:2px 14px 2px;margin:0 -14px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .days::-webkit-scrollbar{display:none}
-.day{scroll-snap-align:center;flex:0 0 auto;width:68px;background:var(--ctrl);box-shadow:var(--ctrl-shadow);border:1px solid var(--ctrl-line);border-radius:14px;padding:7px 5px 8px;display:grid;justify-items:center;gap:1px;transition:background .15s}
+.day{scroll-snap-align:center;flex:0 0 auto;width:68px;background:var(--ctrl);box-shadow:var(--ctrl-shadow);border:1px solid var(--ctrl-line);border-radius:16px;padding:7px 5px 8px;display:grid;justify-items:center;gap:1px;transition:background .15s,transform .12s ease}
+.day:active{transform:scale(.96)}
 .day .dw{font-size:11px;font-weight:650;text-transform:uppercase;letter-spacing:.4px;color:var(--dim)}
 .day .dn{font-size:18px;font-weight:750;line-height:1.2;font-variant-numeric:tabular-nums}
 .day .dc{font-size:11px;font-weight:650;color:var(--k,var(--dim));max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -236,7 +244,7 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .mrow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .field{display:grid;gap:6px;min-width:0}
 .field>span{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--dim)}
-input[type=number],input[type=time],select{width:100%;font-size:16px;border:1px solid var(--sunken-line);background:var(--sunken);border-radius:13px;padding:12px;min-height:48px}
+input[type=number],input[type=time],select{width:100%;font-size:16px;border:1px solid var(--sunken-line);background:var(--sunken);border-radius:16px;padding:12px;min-height:48px}
 input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
 /* Клавиатурный фокус был виден только на полях ввода: на стекле кольцо по
    умолчанию теряется, поэтому задаём своё и на кнопках. На герое и в тёмной
@@ -254,9 +262,9 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 .foot{font-size:12.5px;line-height:1.5;color:var(--dim);margin:22px 6px 0}
 
 /* ---------- update banner ---------- */
-.update{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);max-width:608px;margin:0 auto;background:rgba(28,28,30,.68);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid rgba(255,255,255,.14);color:#fff;border-radius:18px;padding:12px 12px 12px 16px;display:none;align-items:center;justify-content:space-between;gap:12px;z-index:30;box-shadow:0 1px 1px rgba(255,255,255,.12) inset,0 12px 30px rgba(0,0,0,.35)}
+.update{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);max-width:608px;margin:0 auto;background-color:rgba(28,28,30,.68);background-image:var(--glass-spec);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid rgba(255,255,255,.16);color:#fff;border-radius:24px;padding:12px 12px 12px 16px;display:none;align-items:center;justify-content:space-between;gap:12px;z-index:30;box-shadow:0 1px 1px rgba(255,255,255,.15) inset,0 14px 32px rgba(0,0,0,.35)}
 .update.show{display:flex}
-.update button{background-color:#c2e0f9;background-image:var(--spec);color:#0e2743;border:0;border-radius:11px;padding:9px 14px;font-weight:650;min-height:40px}
+.update button{background-color:#c2e0f9;background-image:var(--glass-spec);color:#0e2743;border:0;border-radius:20px;padding:9px 14px;font-weight:650;min-height:40px;box-shadow:0 1px 0 rgba(255,255,255,.72) inset,0 4px 12px rgba(0,0,0,.18)}
 
 @media(max-width:400px){
   .day{width:66px}
@@ -442,7 +450,7 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 <script src="timer.js"></script>
 <script src="state.js"></script>
 <script>
-const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v29";
+const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v30";
 const{isValidDay,isValidMetric,normalizeState,validateBackup}=State;
 /* Повреждённый localStorage не должен блокировать запуск: normalizeState()
    сбрасывает на дефолты при полном крахе JSON и тихо чинит отдельные
