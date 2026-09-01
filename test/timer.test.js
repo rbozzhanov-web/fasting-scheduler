@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { dur, computeFastState } = require('../timer.js');
+const { dur, computeFastState, actionLabel, closeNotificationBody } = require('../timer.js');
 
 test('dur() formats a millisecond delta as HH:MM:SS', () => {
   assert.equal(dur(0), '00:00:00');
@@ -82,4 +82,18 @@ test('elapsed counter reaches its maximum just before transitioning to "over"', 
   const state = computeFastState(start.toISOString(), '16', justBeforeOver);
   assert.equal(state.phase, 'eat');
   assert.equal(dur(justBeforeOver - state.end), '07:59:59');
+});
+
+test('active fast action is described as cancellation, matching current state behavior', () => {
+  assert.equal(actionLabel('fast'), 'Отменить голодание');
+  assert.equal(actionLabel('eat'), 'Начать голодание');
+  assert.equal(actionLabel('over'), 'Начать голодание');
+});
+
+test('close notification does not claim a new fast started automatically', () => {
+  assert.equal(
+    closeNotificationBody('Начинается голодание 16 ч.'),
+    'Запустите новое голодание, когда будете готовы.'
+  );
+  assert.equal(closeNotificationBody('Другой текст'), 'Другой текст');
 });
