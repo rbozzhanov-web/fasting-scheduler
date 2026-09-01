@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeState, validateBackup, isValidDay, isValidMetric, validFastEnd } = require('../state.js');
+const { normalizeState, validateBackup, isValidDay, isValidMetric, validFastEnd, localDay } = require('../state.js');
 
 const validDay = { date: '2026-01-01', code: 'OFF', times: [], airports: [], kind: 'rest', report: null, release: null };
 const validMetric = { date: '2026-01-01', fat: 20, weight: 75 };
@@ -79,6 +79,11 @@ test('validFastEnd accepts a factual end within one day regardless of current mo
   assert.equal(validFastEnd('2026-01-01T00:00:00Z', '16', '2026-01-02T00:00:00Z'), true);
   assert.equal(validFastEnd('2026-01-01T00:00:00Z', '16', '2026-01-02T00:00:01Z'), false);
   assert.equal(validFastEnd(null, '16', '2026-01-01T12:00:00Z'), false);
+});
+
+test('localDay: formats the device-local calendar date without UTC conversion', () => {
+  assert.equal(localDay(new Date(2026, 8, 2, 0, 5)), '2026-09-02');
+  assert.equal(localDay(new Date(2026, 0, 1, 23, 59)), '2026-01-01');
 });
 
 function goodBackup(overrides = {}) {
