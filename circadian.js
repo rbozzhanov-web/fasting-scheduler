@@ -33,14 +33,19 @@ function stateAt(day,days){
 const dutyTimes=day=>{if(!day||day.kind==="rest"||!day.times?.length)return{report:null,release:null};const a=day.times.map(t=>{const m=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(t);return m?+m[1]*60+ +m[2]:null}).filter(x=>x!=null);if(!a.length)return{report:null,release:null};let report=a[0],release=a[a.length-1];if(release<report)release+=1440;return{report,release}};
 function get(day,days,ctx,fast,opts={}){
  const st=stateAt(day,days),dest=st.station,zone=st.zone,body=st.body,delta=st.delta,kind=ctx==="auto"?(day?.kind||"rest"):ctx,h=24-fast,{report,release}=dutyTimes(day);
+ const isRest=kind==="rest";
  let start=720,note="Ровное дневное окно поддерживает режим без позднего бесконтрольного перекуса.";
  if(kind==="early"){start=report==null?540:clamp(report+90,480,660);note="Ранний duty: питание поставлено после начала работы, а сон остаётся приоритетом."}
  else if(kind==="night"){start=report==null?840:clamp(report-300,720,1080);note="Ночной duty: окно заканчивается до глубокой биологической ночи, насколько позволяет report time."}
  else if(kind==="duty"&&report!=null){start=report>=840?clamp(report-180,660,900):clamp(report+60,600,780);note="Duty: окно привязано к распознанному report time и расположено до позднего либо после раннего report."}
  else if(kind==="training"){start=660;note="Тренировка: окно предусматривает питание для восстановления."}
  else if(kind==="recovery"){start=630;note="Восстановление: сон и мягкое возвращение к режиму важнее строгости."}
- const shift=st.shortStay?clamp(-body*60,-240,240):clamp(-body*30,-120,120);start+=shift;
- if(Math.abs(body)>=1){note+=" Время тела отличается от местного на "+Math.abs(body).toFixed(1)+" ч; "+(st.shortStay?"для короткой стоянки сохранено время базы, окно сдвинуто ":"применён постепенный сдвиг ")+Math.abs(shift/60).toFixed(1)+" ч "+(shift<0?"раньше.":"позже.")}
+ else if(isRest){
+  const bodyShift=clamp(-body*60,-480,480);start=720+bodyShift;
+  note=Math.abs(body)>=1?("День без duty: окно следует адаптированному телесному времени, а не жёстко привязано к полудню. Тело отличается от местного на "+Math.abs(body).toFixed(1)+" ч, поэтому окно сдвинуто "+Math.abs(bodyShift/60).toFixed(1)+" ч "+(bodyShift<0?"раньше.":"позже.")):"Окно центрировано на адаптированном телесном полудне — сейчас оно совпадает с местным, так как тело ещё не сместилось."
+ }
+ const shift=isRest?0:(st.shortStay?clamp(-body*60,-240,240):clamp(-body*30,-120,120));start+=shift;
+ if(!isRest&&Math.abs(body)>=1){note+=" Время тела отличается от местного на "+Math.abs(body).toFixed(1)+" ч; "+(st.shortStay?"для короткой стоянки сохранено время базы, окно сдвинуто ":"применён постепенный сдвиг ")+Math.abs(shift/60).toFixed(1)+" ч "+(shift<0?"раньше.":"позже.")}
  if(opts.goal==="fat"&&kind!=="night"){const close=start+h*60;if(close>1260){start-=close-1260;note+=" Для цели снижения жира окно завершено не позже 21:00 местного времени."}}
  const away=dest!==home,bf=opts.breakfast;let hotel=false;
  if(bf&&bf.on&&away){if(kind==="night"){note+=" Под гостиничный завтрак ночное окно не сдвигается: восстановительный сон важнее."}else{const latest=bf.to-60;if(start>latest){start=Math.max(latest,bf.from);hotel=true;note+=" Окно открыто к гостиничному завтраку."}}}

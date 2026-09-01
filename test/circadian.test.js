@@ -68,8 +68,20 @@ test('get(): night duty places the eating window before the report time', () => 
   assert.ok(p.start < 22 * 60, 'window opens before the 22:00 report time');
 });
 
-test('get(): rest day gives a plain, roomy daytime window', () => {
+test('get(): rest day at home with no travel opens at noon', () => {
   const day = { date: '2026-01-01', kind: 'rest', times: [], airports: [] };
   const p = Circadian.get(day, [day], 'auto', 16, { goal: 'fat' });
   assert.equal(p.kind, 'rest');
+  assert.equal(p.start, 720, 'no body-clock offset from home means the window stays at noon');
+});
+
+test('get(): rest day after a long stay away follows the adapted body clock instead of snapping to noon', () => {
+  const days = [
+    { date: '2026-01-01', kind: 'duty', times: ['09:00', '17:00'], airports: ['LHR'] },
+    { date: '2026-01-12', kind: 'rest', times: [], airports: ['ALA'] },
+  ];
+  const p = Circadian.get(days[1], days, 'auto', 16, { goal: 'fat' });
+  assert.equal(p.kind, 'rest');
+  assert.notEqual(p.body, 0, 'body clock is still adapted to London time on return');
+  assert.notEqual(p.start, 720, 'window shifts away from noon to follow the misaligned body clock');
 });
