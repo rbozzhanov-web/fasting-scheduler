@@ -30,7 +30,7 @@ function get(day,days,ctx,fast,opts={}){
  let start=720,note="Ровное дневное окно поддерживает режим без позднего бесконтрольного перекуса.";
  if(kind==="early"){start=report==null?540:clamp(report+90,480,660);note="Ранний duty: питание поставлено после начала работы, а сон остаётся приоритетом."}
  else if(kind==="night"){start=report==null?840:clamp(report-300,720,1080);note="Ночной duty: окно заканчивается до глубокой биологической ночи, насколько позволяет report time."}
- else if(kind==="duty"&&report!=null){start=clamp(report+60,600,780);note="Duty: начало окна привязано к распознанному report time."}
+ else if(kind==="duty"&&report!=null){start=report>=840?clamp(report-180,660,900):clamp(report+60,600,780);note="Duty: окно привязано к распознанному report time и расположено до позднего либо после раннего report."}
  else if(kind==="training"){start=660;note="Тренировка: окно предусматривает питание для восстановления."}
  else if(kind==="recovery"){start=630;note="Восстановление: сон и мягкое возвращение к режиму важнее строгости."}
  const shift=clamp(-body*30,-120,120);start+=shift;
