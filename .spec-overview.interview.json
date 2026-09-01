@@ -1,0 +1,59 @@
+{
+  "specName": "spec-overview",
+  "timestamp": "2026-09-01T00:00:00Z",
+  "status": "completed",
+  "capturedAtCommit": "a4c0921",
+  "sourceIssue": null,
+  "previewUrl": "https://claude.ai/code/artifact/58893079-60fc-4720-82c7-a7c73d51734b",
+  "splitSpecs": [
+    "spec-timer.md",
+    "spec-data-safety.md",
+    "spec-import.md",
+    "spec-sw.md",
+    "spec-a11y.md",
+    "spec-docs.md",
+    "spec-tests-ci.md"
+  ],
+  "coverageMap": {
+    "Timer/Elapsed Counter": "done",
+    "Data Safety": "done",
+    "Import (PDF+Roster)": "done",
+    "Service Worker": "done",
+    "Accessibility": "done",
+    "Documentation": "done",
+    "Tests & CI": "done"
+  },
+  "baseline": {
+    "derivedFrom": "Explore agent codebase analysis at commit a4c0921",
+    "capturedAtCommit": "a4c0921",
+    "claims": [
+      { "area": "Timer/Elapsed Counter", "claim": "drawFast() in index.html:409-484 derives phase idle/fast/eat/over; eat-phase block at ~428-434 renders #timer as countdown-to-close via dur(eatEnd-now)" },
+      { "area": "Data Safety", "claim": "#clear handler at index.html:838-841 calls localStorage.clear() (whole-origin) + indexedDB.deleteDatabase('fuel-pdf'); does not touch Cache Storage" },
+      { "area": "Data Safety", "claim": "State load at index.html:366-371 has no try/catch around JSON.parse and only truthiness-based field defaulting" },
+      { "area": "Data Safety", "claim": "Backup restore handler at index.html:795-803 validates only d.app and d.state truthiness; no version/type/range checks" },
+      { "area": "Data Safety", "claim": "drawDay() at index.html:688-695 interpolates d.date unescaped into innerHTML while d.code uses esc() two lines later — confirmed XSS sink" },
+      { "area": "Import (PDF+Roster)", "claim": "#pdf handler at index.html:824-837 stores raw PDF File blob in IndexedDB fuel-pdf/f/roster, never read back anywhere; unguarded s.days[0].date access at line 829" },
+      { "area": "Import (PDF+Roster)", "claim": "roster-parser.js silently drops out-of-period date columns via .filter(Boolean), reports success regardless of completeness; airport extraction is whitelist-only against Circadian.Z (~45 codes)" },
+      { "area": "Service Worker", "claim": "sw.js activate handler already correctly scoped (only deletes cache keys != C and != 'fuel-ics'); generic fetch handler caches every successful response unconditionally, no r.ok/type guard" },
+      { "area": "Service Worker", "claim": "index.html:858-873 update-check logic has unreachable #update banner branch due to apply()/!apply() logic bug; intentional auto-reload behavior per code comment for iOS PWA resume" },
+      { "area": "Accessibility", "claim": "viewport meta at index.html:5 has both maximum-scale=1 and user-scalable=no; settings panel is <div class='sheet'> with manual aria-hidden, no focus trap; zero aria-pressed/aria-current/inert/<dialog> anywhere in file" },
+      { "area": "Documentation", "claim": "README.md lines 9,15-17 describe an AI-gateway feature with zero corresponding implementation anywhere in the repo (confirmed via full-repo grep)" },
+      { "area": "Tests & CI", "claim": "No package.json, no test files, no .github/ directory anywhere in the repo" }
+    ]
+  },
+  "driftLedger": [],
+  "redTeamStatus": "completed",
+  "redTeamFindings": [
+    { "dimension": "Security Gaps", "severity": "critical", "title": "XSS sink in drawDay() not fixed by any decision", "resolution": "resolved", "decisionId": "D16" },
+    { "dimension": "Failure Modes", "severity": "major", "title": "save() write path has no error handling", "resolution": "resolved", "decisionId": "D17" },
+    { "dimension": "Contradictory Decisions", "severity": "major", "title": "D6 frozen backup version vs D7/D8 schema evolution", "resolution": "resolved", "decisionId": "D18" },
+    { "dimension": "Operational Concerns", "severity": "major", "title": "Phase 7 module extraction reopens phase 4's sw.js precache list", "resolution": "resolved", "decisionId": "D19" },
+    { "dimension": "Data Integrity", "severity": "major", "title": "D11's foreground/background decision is stale by actual reload time", "resolution": "resolved", "decisionId": "D20" },
+    { "dimension": "Wildcard", "severity": "major", "title": "No cross-tab/multi-window write coordination", "resolution": "acknowledged", "decisionId": "D21" },
+    { "dimension": "Scaling Cliffs", "severity": "minor", "title": "s.metrics grows unbounded, full state re-serialized on every save", "resolution": "acknowledged", "decisionId": "D22" },
+    { "dimension": "Dependency Risks", "severity": "minor", "title": "Vendored pdf.js has no version/security-update policy, excluded from tests", "resolution": "acknowledged", "decisionId": "D22" }
+  ],
+  "feedbackRounds": [
+    { "round": 1, "feedback": "approved", "changes": "none — preview approved as-is" }
+  ]
+}
