@@ -148,6 +148,11 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .times i{color:var(--dim);font-style:normal}
 .times input{width:100%;min-width:0;min-height:46px;padding:12px 8px}
 .calbtn{margin-top:10px;width:100%}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.pair .btn{width:100%}
+.steps{font-size:12px;line-height:1.45;color:var(--dim);margin-top:8px}
+.steps b{color:var(--text);font-weight:650}
+.attn{color:var(--warn-fg)}
 .stats{display:flex;flex-wrap:wrap;gap:3px 14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:13.5px;font-weight:650}
 .stats i{font-style:normal;font-weight:600;color:var(--dim)}
 .note{display:flex;gap:10px;background:var(--warn-bg);border-radius:13px;padding:9px 11px;margin-top:8px;font-size:13px;line-height:1.4}
@@ -301,6 +306,14 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
     <div class="row rowcol" id="icsRow">
       <span class="rl">Напоминания в календарь<small id="icsHint">Окна питания по roster, сигнал за час и в момент</small></span>
       <button id="ics" class="btn btn-quiet mini calbtn">Добавить напоминания</button>
+      <p class="steps">Откроется меню «Поделиться» → выберите <b>Календарь</b> → <b>Добавить все</b>. Повторное добавление обновляет те же события, дубликатов не будет.</p>
+    </div>
+    <div class="row rowcol">
+      <span class="rl">Резервная копия<small id="backupHint">При удалении приложения с экрана «Домой» iOS стирает все данные. Копию можно сохранить в «Файлы» или iCloud.</small></span>
+      <div class="pair">
+        <button id="backup" class="btn btn-quiet mini">Сохранить</button>
+        <label class="btn btn-quiet mini">Восстановить<input id="restore" type="file" accept="application/json,.json" hidden></label>
+      </div>
     </div>
     <label class="row">
       <span class="rl">Цель</span>
@@ -494,8 +507,10 @@ function fastChanged(){s.fired={};save();drawFast();schedule();drawNotify()}
 
 function drawIcs(){
   const n=planWindows().length+(s.fastStart?1:0);
-  q("#icsHint").textContent=n?"Окна питания на "+n+" "+(n%10===1&&n%100!==11?"день":n%10>1&&n%10<5&&(n%100<10||n%100>20)?"дня":"дней")+
-    " вперёд, сигнал за час и в момент":"Импортируй roster или запусти голодание";
+  const word=n%10===1&&n%100!==11?"день":n%10>1&&n%10<5&&(n%100<10||n%100>20)?"дня":"дней";
+  q("#icsHint").innerHTML=!n?"Импортируй roster или запусти голодание"
+    :s.icsStale?'<span class="attn">Roster обновлён — добавьте напоминания заново, на '+n+" "+word+" вперёд.</span>"
+    :"Окна питания на "+n+" "+word+" вперёд, сигнал за час и в момент";
 }
 function drawNotify(){
   const hint=q("#notifyHint"),box=q("#notifyOn");
@@ -584,6 +599,31 @@ async function shareIcs(){
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},1000);
 }
 
+/* ---------- резервная копия ----------
+   Домашний веб-апп на iOS живёт в собственном хранилище: удалили ярлык —
+   стёрлись и настройки, и замеры. Своего сервера нет, поэтому единственная
+   защита — файл, который лежит в «Файлах» или iCloud. */
+function drawBackup(){
+  const n=s.metrics.length;
+  q("#backupHint").innerHTML=s.backupAt
+    ? "Последняя копия: "+stamp(new Date(s.backupAt))+". Настройки, roster и замеры ("+n+")."
+    : (n?'<span class="attn">Копии ещё нет, а замеров уже '+n+'. При удалении приложения они пропадут.</span>'
+        :"При удалении приложения с экрана «Домой» iOS стирает все данные. Копию можно сохранить в «Файлы» или iCloud.");
+}
+async function exportBackup(){
+  const text=JSON.stringify({app:"fuel-window",v:1,saved:new Date().toISOString(),state:s});
+  const name="fuel-window-"+new Date().toLocaleDateString("sv-SE")+".json",type="application/json";
+  s.backupAt=new Date().toISOString();save();drawBackup();
+  try{
+    const f=new File([text],name,{type});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f]});return}
+  }catch(x){if(x&&x.name==="AbortError")return}
+  const url=URL.createObjectURL(new Blob([text],{type}));
+  const a=document.createElement("a");a.href=url;a.download=name;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},1000);
+}
+
 /* ---------- roster day ---------- */
 function drawDay(){
   const box=q("#days"),has=s.days.length>0;
@@ -645,7 +685,7 @@ function drawMetrics(){
   ].filter(Boolean).join(" · ");
 }
 
-const drawAll=()=>{drawHeader();drawDay();drawMetrics();drawFast();drawNotify();drawIcs()};
+const drawAll=()=>{drawHeader();drawDay();drawMetrics();drawFast();drawNotify();drawIcs();drawBackup()};
 
 /* ---------- events ---------- */
 q("#fastBtn").onclick=()=>{
@@ -679,7 +719,17 @@ q("#days").onclick=e=>{
   s.date=b.dataset.d;s.context="auto";save();drawDay();
 };
 q("#goal").onchange=e=>{s.goal=e.target.value;save()};
-q("#ics").onclick=shareIcs;
+q("#ics").onclick=()=>{s.icsStale=false;save();drawIcs();shareIcs()};
+q("#backup").onclick=exportBackup;
+q("#restore").onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{
+    const d=JSON.parse(await f.text());
+    if(d.app!=="fuel-window"||!d.state)throw Error("это не копия Fuel Window");
+    localStorage.setItem(K,JSON.stringify(d.state));
+    location.reload();
+  }catch(x){q("#backupHint").innerHTML='<span class="attn">Не удалось восстановить: '+esc(x.message)+"</span>"}
+};
 q("#notifyOn").onchange=async e=>{
   if(!e.target.checked){s.notify=false;save();schedule();drawNotify();return}
   e.target.checked=false;
@@ -705,6 +755,7 @@ q("#pdf").onchange=async e=>{
     s.days=await FuelParser.parse(file);
     s.date=s.days[0].date;
     s.file={name:file.name,count:s.days.length};
+    s.icsStale=true;
     const r=indexedDB.open("fuel-pdf",1);
     r.onupgradeneeded=()=>r.result.createObjectStore("f");
     r.onsuccess=()=>r.result.transaction("f","readwrite").objectStore("f").put(file,"roster");
