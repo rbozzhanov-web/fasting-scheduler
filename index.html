@@ -288,6 +288,10 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
       <span class="times"><input id="bfFrom" type="time" aria-label="Начало завтрака"><i>—</i><input id="bfTo" type="time" aria-label="Конец завтрака"></span>
     </div>
     <label class="row">
+      <span class="rl">Уведомления<small id="notifyHint">За час до события и в момент</small></span>
+      <input id="notifyOn" type="checkbox" class="sw">
+    </label>
+    <label class="row">
       <span class="rl">Цель</span>
       <select id="goal">
         <option value="fat">Снижение жира</option>
@@ -312,6 +316,7 @@ const q=s=>document.querySelector(s),K="fuel-v4";
 let s=JSON.parse(localStorage.getItem(K)||"{}");
 s.mode=s.mode||"16";s.context=s.context||"auto";s.days=s.days||[];s.metrics=s.metrics||[];s.goal=s.goal||"fat";
 s.bf=Object.assign({on:true,from:"06:30",to:"10:00"},s.bf);
+s.notify=!!s.notify;s.fired=s.fired||{};
 const save=()=>localStorage.setItem(K,JSON.stringify(s));
 
 const WD=["вс","пн","вт","ср","чт","пт","сб"];
@@ -422,6 +427,70 @@ function drawFast(){
   q("#fastBtn").textContent=phase==="fast"?"Завершить":"Начать голодание";
 }
 
+/* ---------- напоминания ----------
+   Четыре момента на цикл: за час до открытия окна и в момент открытия
+   (он же конец интервала голодания), за час до закрытия и в момент.
+   Все они считаются от абсолютного времени старта, поэтому смена
+   часового пояса их не двигает. */
+const canNotify=()=>"Notification"in window&&"serviceWorker"in navigator;
+const canSchedule=()=>canNotify()&&"showTrigger"in Notification.prototype;
+const standalone=()=>window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+
+function fastEvents(){
+  if(!s.fastStart)return[];
+  const st=new Date(s.fastStart).getTime(),F=+s.mode*36e5,E=(24-+s.mode)*36e5;
+  const open=st+F,close=open+E,at=ms=>clock(new Date(ms));
+  return[
+    {k:"open1h",at:open-36e5,t:"Через час — окно питания",b:"Голодание "+s.mode+" ч закончится в "+at(open)+"."},
+    {k:"open",at:open,t:"Окно питания открыто",b:"Голодание "+s.mode+" ч завершено. Окно закроется в "+at(close)+"."},
+    {k:"close1h",at:close-36e5,t:"Через час окно закроется",b:"Окно питания закрывается в "+at(close)+"."},
+    {k:"close",at:close,t:"Окно питания закрыто",b:"Начинается голодание "+s.mode+" ч."}
+  ];
+}
+
+async function schedule(){
+  if(!canNotify())return;
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    const old=await reg.getNotifications({includeTriggered:true}).catch(()=>[]);
+    old.forEach(n=>{if((n.tag||"").startsWith("fw-"))n.close()});
+    if(!s.notify||Notification.permission!=="granted"||!canSchedule())return;
+    for(const e of fastEvents()){
+      if(e.at<=Date.now())continue;
+      reg.showNotification(e.t,{body:e.b,tag:"fw-"+e.k,icon:"icon.svg",badge:"icon.svg",
+        showTrigger:new TimestampTrigger(e.at)});
+    }
+  }catch(x){}
+}
+
+/* Пока приложение открыто, события отрабатываем сами. Если момент прошёл,
+   пока оно было закрыто, молчим — на экране и так видно текущее состояние. */
+function checkDue(){
+  if(!s.notify||!canNotify()||Notification.permission!=="granted"||canSchedule())return;
+  const now=Date.now();let changed=false;
+  s.fired=s.fired||{};
+  for(const e of fastEvents()){
+    if(s.fired[e.k]||now<e.at)continue;
+    if(now-e.at<12e4)navigator.serviceWorker.ready
+      .then(r=>r.showNotification(e.t,{body:e.b,tag:"fw-"+e.k,icon:"icon.svg",badge:"icon.svg"})).catch(()=>{});
+    s.fired[e.k]=true;changed=true;
+  }
+  if(changed)save();
+}
+
+/* Старт, ручное время и смена интервала двигают все четыре момента. */
+function fastChanged(){s.fired={};save();drawFast();schedule();drawNotify()}
+
+function drawNotify(){
+  const hint=q("#notifyHint"),box=q("#notifyOn");
+  box.checked=!!s.notify&&canNotify()&&Notification.permission==="granted";
+  if(!canNotify()){box.disabled=true;hint.textContent="Браузер не поддерживает уведомления";return}
+  if(Notification.permission==="denied"){hint.textContent="Уведомления запрещены — включите их для приложения в настройках устройства";return}
+  if(!standalone()){hint.textContent="Добавьте приложение на экран «Домой» — иначе iOS не разрешит уведомления";return}
+  hint.textContent=canSchedule()?"За час до события и в момент, даже если приложение закрыто"
+    :"Пока приходят только при открытом приложении";
+}
+
 /* ---------- roster day ---------- */
 function drawDay(){
   const box=q("#days"),has=s.days.length>0;
@@ -483,14 +552,14 @@ function drawMetrics(){
   ].filter(Boolean).join(" · ");
 }
 
-const drawAll=()=>{drawHeader();drawDay();drawMetrics();drawFast()};
+const drawAll=()=>{drawHeader();drawDay();drawMetrics();drawFast();drawNotify()};
 
 /* ---------- events ---------- */
 q("#fastBtn").onclick=()=>{
   const now=new Date(),start=s.fastStart?new Date(s.fastStart):null;
   if(start&&now<new Date(start.getTime()+ +s.mode*36e5)){delete s.fastStart;delete s.fastTz;delete s.fastTzOff}
   else{s.fastStart=now.toISOString();s.fastTz=devZone();s.fastTzOff=devOff()}
-  q("#startWrap").hidden=true;save();drawFast();
+  q("#startWrap").hidden=true;fastChanged();
 };
 q("#editStart").onclick=()=>{
   const w=q("#startWrap");w.hidden=!w.hidden;
@@ -505,9 +574,9 @@ q("#applyStart").onclick=()=>{
   const t=new Date(v);if(isNaN(t))return;
   s.fastStart=(t>new Date()?new Date():t).toISOString();
   s.fastTz=devZone();s.fastTzOff=devOff();
-  q("#startWrap").hidden=true;save();drawFast();
+  q("#startWrap").hidden=true;fastChanged();
 };
-q("#mode").onchange=e=>{s.mode=e.target.value;save();drawDay();drawFast()};
+q("#mode").onchange=e=>{s.mode=e.target.value;save();drawDay();fastChanged()};
 q("#ctxSeg").onclick=e=>{
   const b=e.target.closest("[data-x]");if(!b)return;
   s.context=b.dataset.x;save();drawDay();
@@ -517,6 +586,14 @@ q("#days").onclick=e=>{
   s.date=b.dataset.d;s.context="auto";save();drawDay();
 };
 q("#goal").onchange=e=>{s.goal=e.target.value;save()};
+q("#notifyOn").onchange=async e=>{
+  if(!e.target.checked){s.notify=false;save();schedule();drawNotify();return}
+  e.target.checked=false;
+  if(!canNotify()){drawNotify();return}
+  let p=Notification.permission;
+  if(p==="default"){try{p=await Notification.requestPermission()}catch(x){p="denied"}}
+  s.notify=p==="granted";save();schedule();drawNotify();
+};
 q("#bfOn").onchange=e=>{s.bf.on=e.target.checked;q("#bfTimes").hidden=!s.bf.on;save();drawDay()};
 q("#bfFrom").onchange=e=>{s.bf.from=e.target.value||s.bf.from;e.target.value=s.bf.from;save();drawDay()};
 q("#bfTo").onchange=e=>{s.bf.to=e.target.value||s.bf.to;e.target.value=s.bf.to;save();drawDay()};
@@ -552,7 +629,8 @@ function drawStatus(){
 q("#mode").value=s.mode;q("#goal").value=s.goal;
 q("#bfOn").checked=!!s.bf.on;q("#bfFrom").value=s.bf.from;q("#bfTo").value=s.bf.to;q("#bfTimes").hidden=!s.bf.on;
 drawStatus();drawAll();
-setInterval(drawFast,1000);
+setInterval(()=>{drawFast();checkDue()},1000);
+schedule();
 
 /* ---------- service worker ---------- */
 if("serviceWorker"in navigator){
