@@ -363,45 +363,16 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 
 <script src="roster-parser.js"></script>
 <script src="circadian.js"></script>
+<script src="timer.js"></script>
+<script src="state.js"></script>
 <script>
-const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v25";
-const MODES=["12","14","16","18"],CONTEXTS=["auto","training","recovery"],GOALS=["fat","keep"];
-const DATE_RE=/^\d{4}-\d{2}-\d{2}$/;
-const isValidDay=d=>!!d&&typeof d==="object"&&typeof d.date==="string"&&DATE_RE.test(d.date)&&typeof d.code==="string"
-  &&["rest","duty","early","night"].includes(d.kind)
-  &&Array.isArray(d.times)&&d.times.every(t=>typeof t==="string")
-  &&Array.isArray(d.airports)&&d.airports.every(a=>typeof a==="string")
-  &&(d.report===null||typeof d.report==="string")&&(d.release===null||typeof d.release==="string");
-const isValidMetric=m=>!!m&&typeof m==="object"&&typeof m.date==="string"&&!isNaN(Date.parse(m.date))
-  &&Number.isFinite(m.fat)&&m.fat>=3&&m.fat<=70
-  &&(m.weight==null||(Number.isFinite(m.weight)&&m.weight>=30&&m.weight<=250));
-/* Повреждённый localStorage не должен блокировать запуск: сбрасываем на
-   дефолты и один раз показываем причину — иначе пользователь молча
-   теряет весь ростер без объяснения. */
-let dataNotice=null,s;
-try{
-  s=JSON.parse(localStorage.getItem(K)||"{}");
-  if(!s||typeof s!=="object"||Array.isArray(s))throw Error("bad shape");
-}catch(e){
-  s={};
-  dataNotice="Сохранённые данные повреждены и были сброшены. Если есть резервная копия — восстановите её ниже.";
-}
-/* Отдельные испорченные поля (валидный JSON, но не тот тип/значение)
-   нормализуются тихо — это куда менее серьёзно, чем полный крах, и
-   остальной ростер/настройки при этом не теряются. */
-s.mode=MODES.includes(s.mode)?s.mode:"16";
-s.context=CONTEXTS.includes(s.context)?s.context:"auto";
-s.goal=GOALS.includes(s.goal)?s.goal:"fat";
-s.days=Array.isArray(s.days)?s.days.filter(isValidDay):[];
-s.metrics=Array.isArray(s.metrics)?s.metrics.filter(isValidMetric):[];
-s.bf=Object.assign({on:true,from:"06:30",to:"10:00"},(s.bf&&typeof s.bf==="object"&&!Array.isArray(s.bf))?s.bf:{});
-s.notify=!!s.notify;
-s.fired=(s.fired&&typeof s.fired==="object"&&!Array.isArray(s.fired))?s.fired:{};
-/* parserWarnings — техническое поле от roster-парсера (см. roster-parser.js),
-   пока нигде в UI не показывается: экран предпросмотра warnings — отдельная
-   будущая задача. Отсутствие поля в старых backup — не повод отклонять их. */
-s.parserWarnings=Array.isArray(s.parserWarnings)?s.parserWarnings:[];
-if(s.fastStart!=null&&isNaN(new Date(s.fastStart)))delete s.fastStart;
+const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v26";
+const{isValidDay,isValidMetric,normalizeState,validateBackup}=State;
+/* Повреждённый localStorage не должен блокировать запуск: normalizeState()
+   сбрасывает на дефолты при полном крахе JSON и тихо чинит отдельные
+   испорченные поля в остальных случаях — см. state.js. */
+const{state:s,corrupted}=normalizeState(localStorage.getItem(K));
+let dataNotice=corrupted?"Сохранённые данные повреждены и были сброшены. Если есть резервная копия — восстановите её ниже.":null;
 const save=()=>{
   try{
     localStorage.setItem(K,JSON.stringify(s));
@@ -416,8 +387,13 @@ const save=()=>{
    существующих пользователей до этого исправления. */
 if(!s.pdfBlobPurged){
   indexedDB.deleteDatabase("fuel-pdf");
+  /* Флаг не сохраняем принудительно прямо сейчас — save() сбрасывает
+     dataNotice выше, и одноразовое уведомление о повреждении данных
+     исчезло бы, ни разу не показавшись. deleteDatabase() идемпотентен,
+     так что достаточно того, что флаг попадёт в localStorage при первом
+     же обычном save() (или снова тихо повторится при следующей загрузке
+     — тоже не проблема). */
   s.pdfBlobPurged=true;
-  save();
 }
 
 const WD=["вс","пн","вт","ср","чт","пт","сб"];
@@ -429,7 +405,6 @@ const long=d=>new Date(d+"T12:00").toLocaleDateString("ru-RU",{weekday:"long",da
 const short=d=>new Date(d+"T12:00").toLocaleDateString("ru-RU",{weekday:"short",day:"numeric",month:"short"});
 const clock=d=>d.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
 const stamp=d=>d.toLocaleString("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).replace(",","");
-const dur=ms=>[ms/36e5,ms/6e4%60,ms/1e3%60].map(x=>String(Math.floor(x)).padStart(2,"0")).join(":");
 const localValue=d=>new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,16);
 
 /* ---------- часовые пояса ----------
@@ -457,28 +432,20 @@ function drawHeader(){
 
 /* ---------- fasting ring ---------- */
 function drawFast(){
-  const start=s.fastStart?new Date(s.fastStart):null,now=new Date();
-  const fastMs=+s.mode*36e5,eatMs=(24-+s.mode)*36e5;
-  const end=start?new Date(start.getTime()+fastMs):null;
-  const eatEnd=end?new Date(end.getTime()+eatMs):null;
-  let phase="idle",pct=0;
-  if(start&&now<end)phase="fast";
-  else if(start&&now<eatEnd)phase="eat";
-  else if(start)phase="over";
+  const now=new Date();
+  const{phase,start,end,eatEnd,fastMs,eatMs,pct}=Timer.computeFastState(s.fastStart,s.mode,now);
 
   q("#fastModePill").textContent=s.mode+":"+(24-s.mode);
 
   if(phase==="fast"){
-    pct=(now-start)/fastMs*100;
     q("#fastPhase").textContent="До окна питания";
-    q("#timer").textContent=dur(end-now);
+    q("#timer").textContent=Timer.dur(end-now);
     q("#fastSub").textContent=Math.floor(pct)+"% голодания";
     q("#endLabel").textContent="Окно питания в";
     q("#ends").textContent=clock(end);
   }else if(phase==="eat"){
-    pct=(now-end)/eatMs*100;
     q("#fastPhase").textContent="С начала окна питания";
-    q("#timer").textContent=dur(now-end);
+    q("#timer").textContent=Timer.dur(now-end);
     q("#fastSub").textContent=Math.floor(pct)+"% окна";
     q("#endLabel").textContent="Окно закроется";
     q("#ends").textContent=clock(eatEnd);
@@ -867,18 +834,6 @@ sheet.addEventListener("cancel",e=>{e.preventDefault();openSheet(false)});
 /* Backup — менее доверенный источник, чем случайно повреждённый
    localStorage: любое несоответствие отклоняет файл целиком, до
    какой-либо записи, а не чинит его по частям. */
-function validateBackup(d){
-  if(!d||typeof d!=="object")throw Error("файл повреждён");
-  if(d.app!=="fuel-window")throw Error("это не копия Fuel Window");
-  if(d.v!==1)throw Error("неподдерживаемая версия резервной копии");
-  const st=d.state;
-  if(!st||typeof st!=="object")throw Error("отсутствуют данные состояния");
-  if(!MODES.includes(st.mode))throw Error("некорректный режим голодания");
-  if(!CONTEXTS.includes(st.context))throw Error("некорректный контекст");
-  if(!GOALS.includes(st.goal))throw Error("некорректная цель");
-  if(!Array.isArray(st.days)||!st.days.every(isValidDay))throw Error("повреждён ростер в копии");
-  if(!Array.isArray(st.metrics)||!st.metrics.every(isValidMetric))throw Error("повреждены замеры в копии");
-}
 q("#restore").onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
   try{

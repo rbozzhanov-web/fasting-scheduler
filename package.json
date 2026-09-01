@@ -1,0 +1,8 @@
+{
+  "name": "fuel-window",
+  "private": true,
+  "description": "Fuel Window - fasting scheduler PWA",
+  "scripts": {
+    "test": "node --test"
+  }
+}
