@@ -1,13 +1,24 @@
 (function(){
 /* Чистая логика фаз таймера голодания. fastStart хранит реальное начало,
-   fastEnd — только если пользователь завершил голодание раньше плана. */
+   fastEnd — фактическое завершение пользователем. После его записи смена
+   режима не должна переписывать прошлое время окончания. */
 const dur=ms=>[ms/36e5,ms/6e4%60,ms/1e3%60].map(x=>String(Math.max(0,Math.floor(x))).padStart(2,"0")).join(":");
 const STORE_KEY="fuel-v4";
 
+/* Для самого действия «завершить сейчас»: разрешено только до планового
+   конца текущего режима. */
 const validEarlyEnd=(start,nominalEnd,value)=>{
   if(!start||!value)return null;
   const d=new Date(value);
   return Number.isFinite(d.getTime())&&d>=start&&d<=nominalEnd?d:null;
+};
+/* После того как факт уже записан, он остаётся фактом даже если пользователь
+   позже сменил режим. Ограничение 24 ч защищает от повреждённой даты и
+   покрывает все поддерживаемые режимы. */
+const validActualEnd=(start,value)=>{
+  if(!start||!value)return null;
+  const d=new Date(value);
+  return Number.isFinite(d.getTime())&&d>=start&&d<=new Date(start.getTime()+864e5)?d:null;
 };
 
 function storedEarlyEnd(fastStart){
@@ -22,28 +33,28 @@ function resolveCycle(fastStart,mode,fastEnd){
   const start=fastStart?new Date(fastStart):null;
   const plannedFastMs=+mode*36e5,eatMs=(24-+mode)*36e5;
   const nominalEnd=start?new Date(start.getTime()+plannedFastMs):null;
-  const early=start?validEarlyEnd(start,nominalEnd,fastEnd||storedEarlyEnd(fastStart)):null;
-  const end=early||nominalEnd;
+  const actual=start?validActualEnd(start,fastEnd||storedEarlyEnd(fastStart)):null;
+  const end=actual||nominalEnd;
   const fastMs=start&&end?end-start:plannedFastMs;
   const eatEnd=end?new Date(end.getTime()+eatMs):null;
-  return{start,end,eatEnd,fastMs,plannedFastMs,eatMs,endedEarly:!!early};
+  return{start,end,eatEnd,fastMs,plannedFastMs,eatMs,hasActualEnd:!!actual,endedEarly:!!actual&&actual<nominalEnd};
 }
 
 function computeFastState(fastStart,mode,now,fastEnd){
   now=now||new Date();
   const r=resolveCycle(fastStart,mode,fastEnd);
-  const{start,end,eatEnd,fastMs,plannedFastMs,eatMs,endedEarly}=r;
+  const{start,end,eatEnd,fastMs,plannedFastMs,eatMs,endedEarly,hasActualEnd}=r;
   let phase="idle",pct=0;
   if(start&&now<end){phase="fast";pct=(now-start)/plannedFastMs*100}
   else if(start&&now<eatEnd){phase="eat";pct=(now-end)/eatMs*100}
   else if(start){phase="over"}
-  return{phase,start,end,eatEnd,fastMs,plannedFastMs,eatMs,pct,endedEarly,actualFastMs:start&&end?end-start:0};
+  return{phase,start,end,eatEnd,fastMs,plannedFastMs,eatMs,pct,endedEarly,hasActualEnd,actualFastMs:start&&end?end-start:0};
 }
 
 function cycleEventTimes(fastStart,mode,fastEnd){
   const r=resolveCycle(fastStart,mode,fastEnd);
   if(!r.start||!r.end||!r.eatEnd)return null;
-  return{open:r.end.getTime(),close:r.eatEnd.getTime(),actualFastMs:r.fastMs,plannedFastMs:r.plannedFastMs,eatMs:r.eatMs,endedEarly:r.endedEarly};
+  return{open:r.end.getTime(),close:r.eatEnd.getTime(),actualFastMs:r.fastMs,plannedFastMs:r.plannedFastMs,eatMs:r.eatMs,endedEarly:r.endedEarly,hasActualEnd:r.hasActualEnd};
 }
 
 const actionLabel=phase=>phase==="fast"?"Завершить голодание":"Начать голодание";
@@ -81,7 +92,7 @@ function finishEarly(){
   const state=readState();
   if(!state.fastStart)return false;
   const now=new Date(),start=new Date(state.fastStart),nominal=new Date(start.getTime()+ +state.mode*36e5);
-  if(!Number.isFinite(start.getTime())||now<=start||now>=nominal)return false;
+  if(!Number.isFinite(start.getTime())||!validEarlyEnd(start,nominal,now))return false;
   state.fastEnd=now.toISOString();
   state.fired={};
   state.icsStale=true;
@@ -114,7 +125,7 @@ function clearEarlyEnd(){
 const icsStamp=ms=>new Date(ms).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
 function patchActiveIcs(text,state){
   const times=cycleEventTimes(state.fastStart,state.mode,state.fastEnd);
-  if(!times||!times.endedEarly)return text;
+  if(!times||!times.hasActualEnd)return text;
   const keep=times.close>Date.now();
   return String(text).replace(/BEGIN:VEVENT\r?\n[\s\S]*?END:VEVENT\r?\n?/g,block=>{
     const isOpen=block.includes("UID:fw-active-open@fuelwindow");
@@ -166,9 +177,6 @@ function installBrowserGuards(){
       if(finishEarly())setTimeout(()=>location.reload(),40);
       return;
     }
-    /* После досрочного завершения старый index.html всё ещё сравнивает now
-       с nominalEnd и может принять кнопку «Начать» за отмену старого fast.
-       Здесь новый цикл запускается явно и атомарно. */
     if(state.fastEnd&&(r.phase==="eat"||r.phase==="over")){
       e.preventDefault();e.stopImmediatePropagation();
       if(startFreshCycle())setTimeout(()=>location.reload(),40);
@@ -190,9 +198,6 @@ function installBrowserGuards(){
     const fat=document.querySelector("#fat");if(fat)fat.removeAttribute("placeholder");
     const weight=document.querySelector("#weight");if(weight)weight.removeAttribute("placeholder");
 
-    /* Fallback-уведомления старого index.html тоже должны считать от
-       фактического fastEnd, иначе после раннего завершения они приходили в
-       исходно запланированный момент. */
     if(typeof window.fastEvents==="function"){
       window.fastEvents=function(){
         const state=readState(),times=cycleEventTimes(state.fastStart,state.mode,state.fastEnd);
@@ -208,9 +213,6 @@ function installBrowserGuards(){
       };
     }
 
-    /* Календарный экспорт строится старым кодом, затем только активная пара
-       событий сдвигается на фактические open/close. Roster-события не
-       трогаются. Если фактическое окно уже закрыто, активная пара удаляется. */
     if(typeof window.buildIcs==="function"&&!window.buildIcs.__fuelEarlyEndPatched){
       const originalBuild=window.buildIcs;
       const patched=function(){return patchActiveIcs(originalBuild(),readState())};
@@ -232,7 +234,7 @@ function installBrowserGuards(){
   }
 }
 
-const Timer={dur,computeFastState,resolveCycle,cycleEventTimes,actionLabel,closeNotificationBody,validEarlyEnd,patchActiveIcs};
+const Timer={dur,computeFastState,resolveCycle,cycleEventTimes,actionLabel,closeNotificationBody,validEarlyEnd,validActualEnd,patchActiveIcs};
 if(typeof module!=="undefined"&&module.exports)module.exports=Timer;
 else{window.Timer=Timer;installBrowserGuards()}
 })();
