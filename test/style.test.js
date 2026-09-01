@@ -120,7 +120,12 @@ async function withPage(run) {
       chrome.kill();
       await once(chrome, "exit");
     }
-    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    /* Chromium may leave profile files briefly locked after its parent exits.
+       Cleanup is housekeeping, not part of the assertion: never turn a green
+       browser test red solely because /tmp could not be removed immediately. */
+    try {
+      fs.rmSync(profile, { recursive: true, force: true, maxRetries: 20, retryDelay: 150 });
+    } catch {}
   }
 }
 
