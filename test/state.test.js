@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeState, validateBackup, isValidDay, isValidMetric } = require('../state.js');
+const { normalizeState, validateBackup, isValidDay, isValidMetric, validFastEnd } = require('../state.js');
 
 const validDay = { date: '2026-01-01', code: 'OFF', times: [], airports: [], kind: 'rest', report: null, release: null };
 const validMetric = { date: '2026-01-01', fat: 20, weight: 75 };
@@ -27,7 +27,7 @@ test('normalizeState: valid JSON with bad individual fields is fixed silently', 
     days: 'not-an-array',
     metrics: [{ fat: 999, weight: 70, date: '2026-01-01' }, validMetric],
     bf: 'nope', notify: 'yes', fired: [1, 2, 3],
-    fastStart: 'not-a-date',
+    fastStart: 'not-a-date', fastEnd: 'also-bad',
   });
   const { state, corrupted } = normalizeState(raw);
   assert.equal(corrupted, false, 'field-level issues are not full corruption');
@@ -40,6 +40,21 @@ test('normalizeState: valid JSON with bad individual fields is fixed silently', 
   assert.equal(state.notify, true);
   assert.deepEqual(state.fired, {});
   assert.equal('fastStart' in state, false, 'unparseable fastStart is dropped, not kept as Invalid Date');
+  assert.equal('fastEnd' in state, false, 'orphan/invalid fastEnd is dropped too');
+});
+
+test('normalizeState: preserves a valid early fastEnd for the current cycle', () => {
+  const raw = JSON.stringify({ mode: '16', fastStart: '2026-01-01T00:00:00.000Z', fastEnd: '2026-01-01T12:00:00.000Z' });
+  const { state } = normalizeState(raw);
+  assert.equal(state.fastEnd, '2026-01-01T12:00:00.000Z');
+});
+
+test('normalizeState: removes fastEnd outside the current planned fast', () => {
+  for (const fastEnd of ['2025-12-31T23:00:00.000Z', '2026-01-01T17:00:00.000Z', 'bad']) {
+    const raw = JSON.stringify({ mode: '16', fastStart: '2026-01-01T00:00:00.000Z', fastEnd });
+    const { state } = normalizeState(raw);
+    assert.equal(state.fastEnd, undefined);
+  }
 });
 
 test('normalizeState: a single malformed day is dropped without discarding the rest', () => {
@@ -58,6 +73,13 @@ test('isValidDay / isValidMetric: sanity checks used by normalizeState and valid
   assert.equal(isValidMetric({ ...validMetric, weight: null }), true, 'weight is optional');
 });
 
+test('validFastEnd only accepts an end inside the current planned fasting interval', () => {
+  assert.equal(validFastEnd('2026-01-01T00:00:00Z', '16', '2026-01-01T12:00:00Z'), true);
+  assert.equal(validFastEnd('2026-01-01T00:00:00Z', '16', '2026-01-01T16:00:00Z'), true);
+  assert.equal(validFastEnd('2026-01-01T00:00:00Z', '16', '2026-01-01T17:00:00Z'), false);
+  assert.equal(validFastEnd(null, '16', '2026-01-01T12:00:00Z'), false);
+});
+
 function goodBackup(overrides = {}) {
   return {
     app: 'fuel-window', v: 1, saved: new Date().toISOString(),
@@ -69,8 +91,18 @@ test('validateBackup: accepts a well-formed backup', () => {
   assert.doesNotThrow(() => validateBackup(goodBackup()));
 });
 
+test('validateBackup: accepts a backup carrying a valid early fastEnd', () => {
+  assert.doesNotThrow(() => validateBackup(goodBackup({
+    fastStart: '2026-01-01T00:00:00.000Z', fastEnd: '2026-01-01T12:00:00.000Z'
+  })));
+});
+
+test('validateBackup: rejects an orphan or out-of-range fastEnd', () => {
+  assert.throws(() => validateBackup(goodBackup({ fastEnd: '2026-01-01T12:00:00.000Z' })), /окончание/);
+  assert.throws(() => validateBackup(goodBackup({ fastStart: '2026-01-01T00:00:00.000Z', fastEnd: '2026-01-01T17:00:00.000Z' })), /окончание/);
+});
+
 test('validateBackup: accepts a backup missing newer fields (e.g. parserWarnings)', () => {
-  // No parserWarnings key at all - simulates a pre-this-release backup.
   const backup = goodBackup();
   assert.equal('parserWarnings' in backup.state, false);
   assert.doesNotThrow(() => validateBackup(backup));
