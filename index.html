@@ -152,9 +152,10 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .sw:before{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.28);transition:transform .2s}
 .sw:checked:before{transform:translateX(20px)}
 .row.rowcol{display:block}
-.times{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin-top:10px}
-.times i{color:var(--dim);font-style:normal}
-.times input{width:100%;min-width:0;min-height:46px;padding:12px 8px}
+.times{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.tfield{display:grid;gap:5px;min-width:0}
+.tfield>span{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--dim)}
+.times input{width:100%;min-width:0;min-height:46px;padding:12px 8px;text-align:center}
 .calbtn{margin-top:10px;width:100%}
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .pair .btn{width:100%}
@@ -317,7 +318,10 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
     </label>
     <div class="row rowcol" id="bfTimes">
       <span class="rl">Часы завтрака<small>По местному времени гостиницы</small></span>
-      <span class="times"><input id="bfFrom" type="time" aria-label="Начало завтрака"><i>—</i><input id="bfTo" type="time" aria-label="Конец завтрака"></span>
+      <span class="times">
+        <label class="tfield"><span>Начало</span><input id="bfFrom" type="time"></label>
+        <label class="tfield"><span>Конец</span><input id="bfTo" type="time"></label>
+      </span>
     </div>
     <label class="row">
       <span class="rl">Уведомления<small id="notifyHint">За час до события и в момент</small></span>
@@ -326,7 +330,8 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
     <div class="row rowcol" id="icsRow">
       <span class="rl">Напоминания в календарь<small id="icsHint">Окна питания по roster, сигнал за час и в момент</small></span>
       <button id="ics" class="btn btn-quiet mini calbtn">Добавить напоминания</button>
-      <p class="steps">Откроется меню «Поделиться» → выберите <b>Календарь</b> → <b>Добавить все</b>. Повторное добавление обновляет те же события, дубликатов не будет.</p>
+      <button id="icsFile" class="btn btn-quiet mini calbtn">Сохранить файлом</button>
+      <p class="steps">Откроется файл событий — нажмите <b>Добавить все</b>. Календаря нет в меню «Поделиться»: iOS добавляет события при открытии файла, а не при отправке в приложение. Если открытие не сработает, сохраните файл и откройте его в «Файлах». Повторное добавление обновляет те же события, дубликатов не будет.</p>
     </div>
     <div class="row rowcol">
       <span class="rl">Резервная копия<small id="backupHint">При удалении приложения с экрана «Домой» iOS стирает все данные. Копию можно сохранить в «Файлы» или iCloud.</small></span>
@@ -605,9 +610,31 @@ function buildIcs(){
   return L.map(icsFold).join("\r\n")+"\r\n";
 }
 
-async function shareIcs(){
+/* iOS добавляет события, когда файл ОТКРЫВАЮТ, а не когда его отправляют
+   в приложение: Календаря нет в меню «Поделиться». Поэтому основной путь —
+   обычная ссылка на .ics, которую service worker отдаёт из кэша с нужным
+   Content-Type, ровно как отдал бы сервер. */
+async function openIcs(){
+  if(!ready())return;
+  const text=buildIcs();
+  try{
+    const c=await caches.open("fuel-ics");
+    await c.put(new Request(ICS_URL,{cache:"no-store"}),new Response(text,
+      {headers:{"Content-Type":"text/calendar; charset=utf-8",
+                "Content-Disposition":'inline; filename="fuel-window.ics"'}}));
+    const w=window.open(ICS_URL,"_blank");
+    if(!w)location.href=ICS_URL;
+  }catch(x){shareIcs()}
+}
+const ICS_URL="./reminders.ics";
+function ready(){
   const count=planWindows().length+(s.fastStart?1:0);
-  if(!count){q("#icsHint").textContent="Нечего добавлять: запусти голодание или импортируй roster";return}
+  if(count)return true;
+  q("#icsHint").textContent="Нечего добавлять: запусти голодание или импортируй roster";
+  return false;
+}
+async function shareIcs(){
+  if(!ready())return;
   const text=buildIcs(),name="fuel-window.ics",type="text/calendar";
   try{
     const file=new File([text],name,{type});
@@ -739,7 +766,8 @@ q("#days").onclick=e=>{
   s.date=b.dataset.d;s.context="auto";save();drawDay();
 };
 q("#goal").onchange=e=>{s.goal=e.target.value;save()};
-q("#ics").onclick=()=>{s.icsStale=false;save();drawIcs();shareIcs()};
+q("#ics").onclick=()=>{s.icsStale=false;save();drawIcs();openIcs()};
+q("#icsFile").onclick=()=>{s.icsStale=false;save();drawIcs();shareIcs()};
 q("#backup").onclick=exportBackup;
 const sheet=q("#sheet");
 const openSheet=on=>{
