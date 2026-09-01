@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme:light)">
+<meta name="theme-color" content="#f2f3ec" media="(prefers-color-scheme:light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme:dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon.svg">
@@ -15,29 +15,38 @@
 /* ---------- tokens ---------- */
 :root{
   color-scheme:light dark;
-  --bg:#f2f2f7; --bg-blur:rgba(242,242,247,.8);
-  --surface:#fff; --surface-2:#eef0f4; --surface-3:#e5e8ed;
-  --text:#10151a; --dim:#71757e; --line:#e4e7ec;
-  --accent:#0f6f5c; --accent-ink:#0c5b4b; --accent-soft:#ddf3ec;
-  --amber:#e5a133; --green:#2fa36b; --blue:#007aff; --red:#d23b2c;
-  --good-bg:#dff3e7; --good-fg:#1d7a4d;
-  --bad-bg:#fbe6e3; --bad-fg:#b3382a;
-  --warn-bg:#fdf3e6; --warn-fg:#8a5a12;
-  --hero-a:#15745f; --hero-b:#0a3931;
-  --on-hero:#fff; --on-hero-dim:#a8d8c8;
-  --k-rest:#34c759; --k-duty:#0a84ff; --k-early:#ff9f0a; --k-night:#8e7cff;
+  --bg:#f2f3ec; --bg-blur:rgba(242,243,236,.8);
+  --surface:#fff; --surface-2:#edefe6; --surface-3:#e2e6d6;
+  --text:#1b2013; --dim:#6b705e; --line:#e3e6da;
+  --accent:#556139; --on-accent:#fff; --on-accent-dim:rgba(255,255,255,.88);
+  --accent-ink:#454f2e; --accent-soft:#e7edd8;
+  --act:#37421f; --on-act:#eff2e5; --eat:#8f4718; --red:#a33a24;
+  --good-bg:#e2edd6; --good-fg:#41682c;
+  --bad-bg:#f6e4de; --bad-fg:#9b3d26;
+  --warn-bg:#f6eedc; --warn-fg:#7a5716;
+  --hero-a:#b7c29a; --hero-b:#96a672;
+  --on-hero:#1e2410; --on-hero-dim:#354020;
+  --veil:rgba(30,36,16,.13); --veil-2:rgba(30,36,16,.22); --veil-line:rgba(30,36,16,.16);
+  --track:rgba(255,255,255,.30); --zone:rgba(200,130,63,.54); --pick:0;
+  --k-rest:#3f6a30; --k-duty:#446f8c; --k-early:#8e5a12; --k-night:#6a5c99;
   --r:22px;
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
 }
 @media(prefers-color-scheme:dark){:root{
   --bg:#000; --bg-blur:rgba(0,0,0,.72);
-  --surface:#151618; --surface-2:#232428; --surface-3:#2e3035;
-  --text:#f4f5f7; --dim:#9297a0; --line:#26282c;
-  --accent:#28a689; --accent-ink:#79dfc2; --accent-soft:#123330;
-  --good-bg:#123528; --good-fg:#5fd39a;
-  --bad-bg:#3a201c; --bad-fg:#ff8f80;
+  --surface:#151711; --surface-2:#232619; --surface-3:#2e3222;
+  --text:#f1f3ea; --dim:#93998a; --line:#262a1c;
+  --accent:#a9b689; --on-accent:#1a1f10; --on-accent-dim:rgba(26,31,16,.78);
+  --accent-ink:#bcc9a0; --accent-soft:#242b18;
+  --act:#a9b689; --on-act:#1a1f10; --eat:#efae6e; --red:#ff8f80;
+  --good-bg:#1d2f16; --good-fg:#9ed277;
+  --bad-bg:#3a201c; --bad-fg:#ff9c8c;
   --warn-bg:#2b2418; --warn-fg:#e6b877;
-  --hero-a:#136452; --hero-b:#062421;
+  --hero-a:#3c4729; --hero-b:#1c2214;
+  --on-hero:#edf1e2; --on-hero-dim:#a9b689;
+  --k-rest:#8cc978; --k-duty:#86b8d6; --k-early:#e3ae62; --k-night:#b0a5de;
+  --veil:rgba(255,255,255,.14); --veil-2:rgba(255,255,255,.24); --veil-line:rgba(255,255,255,.14);
+  --track:rgba(255,255,255,.20); --zone:rgba(42,27,8,.40); --pick:1;
 }}
 
 /* ---------- base ---------- */
@@ -63,42 +72,42 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 @media(prefers-color-scheme:dark){.card{box-shadow:none;border:1px solid var(--line)}}
 
 /* ---------- hero: fasting ---------- */
-.hero{background:linear-gradient(158deg,var(--hero-a),var(--hero-b));color:var(--on-hero);border-radius:26px;padding:14px;box-shadow:0 14px 32px rgba(10,57,49,.28)}
+.hero{background:linear-gradient(158deg,var(--hero-a),var(--hero-b));color:var(--on-hero);border-radius:26px;padding:14px;box-shadow:0 14px 32px rgba(45,56,26,.22)}
 .hero-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .eyebrow{font-size:11px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--on-hero-dim)}
-.hpill{font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;background:rgba(255,255,255,.16);color:#fff}
+.hpill{font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;background:var(--veil);color:var(--on-hero)}
 
 .tmrow{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:10px}
 .tmrow strong{font-size:clamp(30px,8.6vw,38px);font-weight:750;letter-spacing:-1.2px;font-variant-numeric:tabular-nums;line-height:1}
 .tmrow small{font-size:13px;color:var(--on-hero-dim);text-align:right;min-width:0}
-.cyc{position:relative;height:10px;border-radius:99px;background:rgba(255,255,255,.17);overflow:hidden;margin-top:12px}
-.cyc-eat{position:absolute;top:0;bottom:0;right:0;background:rgba(47,163,107,.42)}
-.cyc-fill{position:absolute;top:0;bottom:0;left:0;border-radius:99px;background:var(--amber);transition:width .5s ease,background .3s ease}
-.cyc.eat .cyc-fill{background:var(--green)}
+.cyc{position:relative;height:10px;border-radius:99px;background:var(--track);overflow:hidden;margin-top:12px}
+.cyc-eat{position:absolute;top:0;bottom:0;right:0;background:var(--zone)}
+.cyc-fill{position:absolute;top:0;bottom:0;left:0;border-radius:99px;background:var(--act);transition:width .5s ease,background .3s ease}
+.cyc.eat .cyc-fill{background:var(--eat)}
 .cyclab{display:flex;justify-content:space-between;gap:10px;margin-top:6px;font-size:11px;font-weight:650;letter-spacing:.3px;color:var(--on-hero-dim)}
 
-.hmeta{display:flex;justify-content:space-between;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.14)}
+.hmeta{display:flex;justify-content:space-between;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--veil-line)}
 .hmeta div{display:grid;gap:3px;min-width:0}
 .hmeta div+div{text-align:right}
 .hmeta span{font-size:11px;font-weight:650;letter-spacing:.5px;text-transform:uppercase;color:var(--on-hero-dim)}
 .hmeta b{font-size:15px;font-weight:650;font-variant-numeric:tabular-nums;white-space:nowrap}
 
 .tzline{font-size:11.5px;color:var(--on-hero-dim);text-align:center;margin-top:7px}
-.tznote{margin-top:12px;background:rgba(255,255,255,.14);border-radius:13px;padding:11px 13px;font-size:13px;line-height:1.45;color:#fff}
+.tznote{margin-top:12px;background:var(--veil);border-radius:13px;padding:11px 13px;font-size:13px;line-height:1.45;color:var(--on-hero)}
 .startrow{display:flex;gap:8px;margin-top:10px}
-.startrow input{flex:1;min-width:0;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:13px;padding:11px;font-size:15px;color:#fff}
-.startrow input::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.8}
+.startrow input{flex:1;min-width:0;background:var(--veil);border:1px solid var(--veil-2);border-radius:13px;padding:11px;font-size:15px;color:var(--on-hero)}
+.startrow input::-webkit-calendar-picker-indicator{filter:invert(var(--pick));opacity:.75}
 .startrow .btn{flex:0 0 auto}
 
 /* ---------- buttons ---------- */
 .btn{border:0;border-radius:14px;padding:13px 16px;min-height:48px;font-weight:650;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s ease,opacity .15s}
 .btn:active{transform:scale(.985)}
-.btn-amber{width:100%;background:var(--amber);color:#22200f}
+.btn-act{width:100%;background:var(--act);color:var(--on-act)}
 .acts{display:flex;gap:8px;margin-top:12px}
-.acts .btn-amber{flex:1 1 auto}
+.acts .btn-act{flex:1 1 auto}
 .acts .btn-ghost{flex:0 0 auto;font-size:14px}
-.btn-blue{width:100%;margin-top:14px;background:var(--blue);color:#fff}
-.btn-ghost{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.24)}
+.btn-blue{width:100%;margin-top:14px;background:var(--accent);color:var(--on-accent)}
+.btn-ghost{background:var(--veil);color:var(--on-hero);border:1px solid var(--veil-2)}
 .btn-quiet{background:var(--surface-2);color:var(--text)}
 .btn-link{width:100%;background:none;color:var(--on-hero-dim);min-height:38px;padding:8px;font-size:13px;font-weight:600;margin-top:4px}
 .btn-danger{background:var(--bad-bg);color:var(--bad-fg)}
@@ -109,9 +118,6 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .seg button{flex:1 1 0;min-width:0;border:0;background:none;color:var(--dim);font-size:13px;font-weight:650;padding:7px 4px;min-height:36px;border-radius:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .15s,color .15s}
 .seg button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.14)}
 #ctxSeg button{font-size:clamp(11px,3.1vw,13px)}
-.hero .seg{background:rgba(255,255,255,.13)}
-.hero .seg button{color:var(--on-hero-dim)}
-.hero .seg button.on{background:rgba(255,255,255,.94);color:#0a3931;box-shadow:none}
 
 /* ---------- day strip ---------- */
 .days{display:flex;gap:7px;overflow-x:auto;padding:2px 14px 2px;margin:0 -14px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none}
@@ -122,8 +128,8 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .day .dc{font-size:11px;font-weight:650;color:var(--k,var(--dim));max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;background:var(--k-duty)}
 .day.today{box-shadow:inset 0 0 0 2px var(--accent)}
-.day.on{background:var(--accent);color:#fff}
-.day.on .dw,.day.on .dc{color:rgba(255,255,255,.88)}
+.day.on{background:var(--accent);color:var(--on-accent)}
+.day.on .dw,.day.on .dc{color:var(--on-accent-dim)}
 
 /* ---------- day forecast ---------- */
 .dayhead{display:flex;align-items:baseline;gap:8px;font-size:13.5px;color:var(--dim);margin-top:11px;line-height:1.35}
@@ -145,7 +151,7 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .stats{display:flex;flex-wrap:wrap;gap:3px 14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:13.5px;font-weight:650}
 .stats i{font-style:normal;font-weight:600;color:var(--dim)}
 .note{display:flex;gap:10px;background:var(--warn-bg);border-radius:13px;padding:9px 11px;margin-top:8px;font-size:13px;line-height:1.4}
-.note:before{content:"";flex:0 0 3px;border-radius:99px;background:var(--amber)}
+.note:before{content:"";flex:0 0 3px;border-radius:99px;background:var(--warn-fg)}
 .empty{font-size:14px;color:var(--dim);background:var(--surface-2);border-radius:14px;padding:14px;margin-top:12px}
 
 /* ---------- metrics ---------- */
@@ -173,7 +179,7 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 /* ---------- update banner ---------- */
 .update{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);max-width:608px;margin:0 auto;background:#1c1c1e;color:#fff;border-radius:18px;padding:12px 12px 12px 16px;display:none;align-items:center;justify-content:space-between;gap:12px;z-index:30;box-shadow:0 12px 30px rgba(0,0,0,.35)}
 .update.show{display:flex}
-.update button{background:var(--blue);color:#fff;border:0;border-radius:11px;padding:9px 14px;font-weight:650;min-height:40px}
+.update button{background:#a9b689;color:#1a1f10;border:0;border-radius:11px;padding:9px 14px;font-weight:650;min-height:40px}
 
 @media(max-width:400px){
   .day{width:66px}
@@ -222,7 +228,7 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
     <p class="tznote" id="tzNote" hidden></p>
 
     <div class="acts">
-      <button id="fastBtn" class="btn btn-amber">Начать</button>
+      <button id="fastBtn" class="btn btn-act">Начать</button>
       <button id="editStart" class="btn btn-ghost">Другое время</button>
     </div>
     <div class="startrow" id="startWrap" hidden>
