@@ -120,7 +120,7 @@ async function withPage(run) {
       chrome.kill();
       await once(chrome, "exit");
     }
-    fs.rmSync(profile, { recursive: true, force: true });
+    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 }
 
