@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -66,8 +66,9 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .gear{flex:0 0 auto;width:42px;height:42px;padding:0;border:0;border-radius:14px;background:var(--surface-2);color:var(--accent-ink);display:grid;place-items:center;transition:transform .12s ease}
 .gear:active{transform:scale(.94)}
 .gear svg{width:22px;height:22px}
-.sheet{position:fixed;inset:0;z-index:40;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;visibility:hidden;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1),visibility .3s}
+.sheet{position:fixed;inset:0;z-index:40;margin:0;width:100%;height:100%;max-width:none;max-height:none;border:none;padding:0;background:var(--bg);color:var(--text);overflow-y:auto;-webkit-overflow-scrolling:touch;visibility:hidden;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1),visibility .3s}
 .sheet.open{visibility:visible;transform:none}
+.sheet::backdrop{background:transparent}
 .sheet-hd{position:sticky;top:0;z-index:2;background:var(--bg);padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px;border-bottom:1px solid var(--line)}
 .sheet-in{max-width:640px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .sheet-in h2{font-size:22px;font-weight:750;letter-spacing:-.5px}
@@ -268,9 +269,9 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
       <p class="hotelrow" id="hotelRow" hidden></p>
       <div class="stats" id="stats"></div>
       <div class="seg" id="ctxSeg">
-        <button data-x="auto">По roster</button>
-        <button data-x="training">Тренировка</button>
-        <button data-x="recovery">Восстановление</button>
+        <button data-x="auto" aria-pressed="true">По roster</button>
+        <button data-x="training" aria-pressed="false">Тренировка</button>
+        <button data-x="recovery" aria-pressed="false">Восстановление</button>
       </div>
       <p class="note" id="note" hidden></p>
     </div>
@@ -295,7 +296,7 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
   <p class="foot">Не медицинское приложение. Во время duty приоритет — сон, самочувствие и безопасная работоспособность.</p>
 </main>
 
-<div class="sheet" id="sheet" aria-hidden="true">
+<dialog class="sheet" id="sheet">
   <div class="sheet-hd"><div class="sheet-in"><h2>Настройки</h2>
     <button id="closeSet" class="btn btn-quiet mini">Готово</button></div></div>
   <div class="sheet-body">
@@ -356,7 +357,7 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
   </section>
     <p class="foot">Roster, замеры и настройки хранятся только на этом устройстве и никуда не отправляются.<br>Версия <b id="ver">—</b></p>
   </div>
-</div>
+</dialog>
 
 <div class="update" id="update"><span>Доступна новая версия</span><button id="reload">Обновить</button></div>
 
@@ -738,7 +739,7 @@ function drawDay(){
   box.innerHTML=!has?"":s.days.map(d=>{
     const date=new Date(d.date+"T12:00");
     return '<button class="day'+(d.date===s.date?" on":"")+(d.date===t?" today":"")+
-      '" data-d="'+esc(d.date)+'" style="--k:'+(KIND[d.kind]||KIND.duty)+'">'+
+      '" data-d="'+esc(d.date)+'" aria-pressed="'+(d.date===s.date)+'" style="--k:'+(KIND[d.kind]||KIND.duty)+'">'+
       '<span class="dw">'+WD[date.getDay()]+'</span>'+
       '<span class="dn">'+date.getDate()+'</span>'+
       '<span class="dc">'+esc(d.code)+'</span></button>';
@@ -746,7 +747,10 @@ function drawDay(){
   const on=box.querySelector(".on");
   if(on)box.scrollLeft=on.offsetLeft-(box.clientWidth-on.offsetWidth)/2;
 
-  document.querySelectorAll("#ctxSeg button").forEach(b=>b.classList.toggle("on",b.dataset.x===s.context));
+  document.querySelectorAll("#ctxSeg button").forEach(b=>{
+    const on=b.dataset.x===s.context;
+    b.classList.toggle("on",on);b.setAttribute("aria-pressed",String(on));
+  });
 
   const d=s.days.find(x=>x.date===s.date),p=d?Circadian.get(d,s.days,s.context,+s.mode,bfOpts()):null;
   q("#dayBox").hidden=!p;
@@ -834,14 +838,32 @@ q("#backup").onclick=exportBackup;
 q("#nagSave").onclick=()=>{exportBackup();drawMetrics()};
 const sheet=q("#sheet");
 const openSheet=on=>{
-  sheet.classList.toggle("open",on);
-  sheet.setAttribute("aria-hidden",String(!on));
-  document.body.style.overflow=on?"hidden":"";
-  if(on){sheet.scrollTop=0;drawAll()}
+  if(on){
+    sheet.showModal();
+    /* В момент showModal() панель ещё visibility:hidden (класс .open
+       добавляется только сейчас, для анимации выезда) — браузер не
+       находит внутри неё ничего фокусируемого и оставляет фокус на
+       body. Второй кадр нужен, потому что сразу после showModal()
+       браузер сам ещё раз трогает фокус — наш вызов должен случиться
+       уже после этого, иначе будет тихо перезаписан обратно на body. */
+    requestAnimationFrame(()=>{
+      sheet.classList.add("open");
+      requestAnimationFrame(()=>q("#closeSet").focus());
+    });
+    document.body.style.overflow="hidden";
+    sheet.scrollTop=0;drawAll();
+  }else{
+    sheet.classList.remove("open");
+    document.body.style.overflow="";
+    /* Дожидаемся конца анимации выезда, прежде чем реально закрыть
+       <dialog> — иначе close() спрячет панель мгновенно. */
+    sheet.addEventListener("transitionend",()=>sheet.close(),{once:true});
+    q("#openSet").focus();
+  }
 };
 q("#openSet").onclick=()=>openSheet(true);
 q("#closeSet").onclick=()=>openSheet(false);
-addEventListener("keydown",e=>{if(e.key==="Escape")openSheet(false)});
+sheet.addEventListener("cancel",e=>{e.preventDefault();openSheet(false)});
 /* Backup — менее доверенный источник, чем случайно повреждённый
    localStorage: любое несоответствие отклоняет файл целиком, до
    какой-либо записи, а не чинит его по частям. */
