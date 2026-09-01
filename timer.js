@@ -146,6 +146,7 @@ function installBrowserGuards(){
     const b=document.querySelector("#fastBtn");
     if(b&&typeof MutationObserver!=="undefined")new MutationObserver(fixButton).observe(b,{childList:true,subtree:true,characterData:true});
     const ver=document.querySelector("#ver");if(ver)ver.textContent="v31";
+    const hdr=document.querySelector(".hdr");if(hdr)hdr.style.borderBottom="none";
   });
 
   /* Любое закрывающее уведомление формулируем в соответствии с реальной
