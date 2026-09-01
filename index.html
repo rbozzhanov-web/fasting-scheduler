@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -66,8 +66,9 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .gear{flex:0 0 auto;width:42px;height:42px;padding:0;border:0;border-radius:14px;background:var(--surface-2);color:var(--accent-ink);display:grid;place-items:center;transition:transform .12s ease}
 .gear:active{transform:scale(.94)}
 .gear svg{width:22px;height:22px}
-.sheet{position:fixed;inset:0;z-index:40;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;visibility:hidden;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1),visibility .3s}
+.sheet{position:fixed;inset:0;z-index:40;margin:0;width:100%;height:100%;max-width:none;max-height:none;border:none;padding:0;background:var(--bg);color:var(--text);overflow-y:auto;-webkit-overflow-scrolling:touch;visibility:hidden;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1),visibility .3s}
 .sheet.open{visibility:visible;transform:none}
+.sheet::backdrop{background:transparent}
 .sheet-hd{position:sticky;top:0;z-index:2;background:var(--bg);padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px;border-bottom:1px solid var(--line)}
 .sheet-in{max-width:640px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .sheet-in h2{font-size:22px;font-weight:750;letter-spacing:-.5px}
@@ -268,9 +269,9 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
       <p class="hotelrow" id="hotelRow" hidden></p>
       <div class="stats" id="stats"></div>
       <div class="seg" id="ctxSeg">
-        <button data-x="auto">По roster</button>
-        <button data-x="training">Тренировка</button>
-        <button data-x="recovery">Восстановление</button>
+        <button data-x="auto" aria-pressed="true">По roster</button>
+        <button data-x="training" aria-pressed="false">Тренировка</button>
+        <button data-x="recovery" aria-pressed="false">Восстановление</button>
       </div>
       <p class="note" id="note" hidden></p>
     </div>
@@ -295,7 +296,7 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
   <p class="foot">Не медицинское приложение. Во время duty приоритет — сон, самочувствие и безопасная работоспособность.</p>
 </main>
 
-<div class="sheet" id="sheet" aria-hidden="true">
+<dialog class="sheet" id="sheet">
   <div class="sheet-hd"><div class="sheet-in"><h2>Настройки</h2>
     <button id="closeSet" class="btn btn-quiet mini">Готово</button></div></div>
   <div class="sheet-body">
@@ -356,19 +357,44 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
   </section>
     <p class="foot">Roster, замеры и настройки хранятся только на этом устройстве и никуда не отправляются.<br>Версия <b id="ver">—</b></p>
   </div>
-</div>
+</dialog>
 
 <div class="update" id="update"><span>Доступна новая версия</span><button id="reload">Обновить</button></div>
 
 <script src="roster-parser.js"></script>
 <script src="circadian.js"></script>
+<script src="timer.js"></script>
+<script src="state.js"></script>
 <script>
-const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v24";
-let s=JSON.parse(localStorage.getItem(K)||"{}");
-s.mode=s.mode||"16";s.context=s.context||"auto";s.days=s.days||[];s.metrics=s.metrics||[];s.goal=s.goal||"fat";
-s.bf=Object.assign({on:true,from:"06:30",to:"10:00"},s.bf);
-s.notify=!!s.notify;s.fired=s.fired||{};
-const save=()=>localStorage.setItem(K,JSON.stringify(s));
+const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v26";
+const{isValidDay,isValidMetric,normalizeState,validateBackup}=State;
+/* Повреждённый localStorage не должен блокировать запуск: normalizeState()
+   сбрасывает на дефолты при полном крахе JSON и тихо чинит отдельные
+   испорченные поля в остальных случаях — см. state.js. */
+const{state:s,corrupted}=normalizeState(localStorage.getItem(K));
+let dataNotice=corrupted?"Сохранённые данные повреждены и были сброшены. Если есть резервная копия — восстановите её ниже.":null;
+const save=()=>{
+  try{
+    localStorage.setItem(K,JSON.stringify(s));
+    if(dataNotice){dataNotice=null;drawBackup()}
+  }catch(e){
+    dataNotice="Не удалось сохранить изменения — освободите место в браузере или отключите приватный режим.";
+    drawBackup();
+  }
+};
+/* Исходный PDF больше не должен храниться (он никогда повторно не
+   читался) — разово вычищаем то, что успело накопиться у уже
+   существующих пользователей до этого исправления. */
+if(!s.pdfBlobPurged){
+  indexedDB.deleteDatabase("fuel-pdf");
+  /* Флаг не сохраняем принудительно прямо сейчас — save() сбрасывает
+     dataNotice выше, и одноразовое уведомление о повреждении данных
+     исчезло бы, ни разу не показавшись. deleteDatabase() идемпотентен,
+     так что достаточно того, что флаг попадёт в localStorage при первом
+     же обычном save() (или снова тихо повторится при следующей загрузке
+     — тоже не проблема). */
+  s.pdfBlobPurged=true;
+}
 
 const WD=["вс","пн","вт","ср","чт","пт","сб"];
 const KIND={rest:"var(--k-rest)",duty:"var(--k-duty)",early:"var(--k-early)",night:"var(--k-night)"};
@@ -379,7 +405,6 @@ const long=d=>new Date(d+"T12:00").toLocaleDateString("ru-RU",{weekday:"long",da
 const short=d=>new Date(d+"T12:00").toLocaleDateString("ru-RU",{weekday:"short",day:"numeric",month:"short"});
 const clock=d=>d.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
 const stamp=d=>d.toLocaleString("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).replace(",","");
-const dur=ms=>[ms/36e5,ms/6e4%60,ms/1e3%60].map(x=>String(Math.floor(x)).padStart(2,"0")).join(":");
 const localValue=d=>new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,16);
 
 /* ---------- часовые пояса ----------
@@ -407,28 +432,20 @@ function drawHeader(){
 
 /* ---------- fasting ring ---------- */
 function drawFast(){
-  const start=s.fastStart?new Date(s.fastStart):null,now=new Date();
-  const fastMs=+s.mode*36e5,eatMs=(24-+s.mode)*36e5;
-  const end=start?new Date(start.getTime()+fastMs):null;
-  const eatEnd=end?new Date(end.getTime()+eatMs):null;
-  let phase="idle",pct=0;
-  if(start&&now<end)phase="fast";
-  else if(start&&now<eatEnd)phase="eat";
-  else if(start)phase="over";
+  const now=new Date();
+  const{phase,start,end,eatEnd,fastMs,eatMs,pct}=Timer.computeFastState(s.fastStart,s.mode,now);
 
   q("#fastModePill").textContent=s.mode+":"+(24-s.mode);
 
   if(phase==="fast"){
-    pct=(now-start)/fastMs*100;
     q("#fastPhase").textContent="До окна питания";
-    q("#timer").textContent=dur(end-now);
+    q("#timer").textContent=Timer.dur(end-now);
     q("#fastSub").textContent=Math.floor(pct)+"% голодания";
     q("#endLabel").textContent="Окно питания в";
     q("#ends").textContent=clock(end);
   }else if(phase==="eat"){
-    pct=(now-end)/eatMs*100;
-    q("#fastPhase").textContent="Окно питания открыто";
-    q("#timer").textContent=dur(eatEnd-now);
+    q("#fastPhase").textContent="С начала окна питания";
+    q("#timer").textContent=Timer.dur(now-end);
     q("#fastSub").textContent=Math.floor(pct)+"% окна";
     q("#endLabel").textContent="Окно закроется";
     q("#ends").textContent=clock(eatEnd);
@@ -661,6 +678,7 @@ async function shareIcs(){
 const drawBfRows=()=>{q("#bfFromRow").hidden=!s.bf.on;q("#bfToRow").hidden=!s.bf.on};
 function drawBackup(){
   const n=s.metrics.length;
+  if(dataNotice){q("#backupHint").innerHTML='<span class="attn">'+esc(dataNotice)+"</span>";return}
   q("#backupHint").innerHTML=s.backupAt
     ? "Последняя копия: "+stamp(new Date(s.backupAt))+". Настройки, roster и замеры ("+n+")."
     : (n?'<span class="attn">Копии ещё нет, а замеров уже '+n+'. При удалении приложения они пропадут.</span>'
@@ -688,7 +706,7 @@ function drawDay(){
   box.innerHTML=!has?"":s.days.map(d=>{
     const date=new Date(d.date+"T12:00");
     return '<button class="day'+(d.date===s.date?" on":"")+(d.date===t?" today":"")+
-      '" data-d="'+d.date+'" style="--k:'+(KIND[d.kind]||KIND.duty)+'">'+
+      '" data-d="'+esc(d.date)+'" aria-pressed="'+(d.date===s.date)+'" style="--k:'+(KIND[d.kind]||KIND.duty)+'">'+
       '<span class="dw">'+WD[date.getDay()]+'</span>'+
       '<span class="dn">'+date.getDate()+'</span>'+
       '<span class="dc">'+esc(d.code)+'</span></button>';
@@ -696,7 +714,10 @@ function drawDay(){
   const on=box.querySelector(".on");
   if(on)box.scrollLeft=on.offsetLeft-(box.clientWidth-on.offsetWidth)/2;
 
-  document.querySelectorAll("#ctxSeg button").forEach(b=>b.classList.toggle("on",b.dataset.x===s.context));
+  document.querySelectorAll("#ctxSeg button").forEach(b=>{
+    const on=b.dataset.x===s.context;
+    b.classList.toggle("on",on);b.setAttribute("aria-pressed",String(on));
+  });
 
   const d=s.days.find(x=>x.date===s.date),p=d?Circadian.get(d,s.days,s.context,+s.mode,bfOpts()):null;
   q("#dayBox").hidden=!p;
@@ -784,19 +805,40 @@ q("#backup").onclick=exportBackup;
 q("#nagSave").onclick=()=>{exportBackup();drawMetrics()};
 const sheet=q("#sheet");
 const openSheet=on=>{
-  sheet.classList.toggle("open",on);
-  sheet.setAttribute("aria-hidden",String(!on));
-  document.body.style.overflow=on?"hidden":"";
-  if(on){sheet.scrollTop=0;drawAll()}
+  if(on){
+    sheet.showModal();
+    /* В момент showModal() панель ещё visibility:hidden (класс .open
+       добавляется только сейчас, для анимации выезда) — браузер не
+       находит внутри неё ничего фокусируемого и оставляет фокус на
+       body. Второй кадр нужен, потому что сразу после showModal()
+       браузер сам ещё раз трогает фокус — наш вызов должен случиться
+       уже после этого, иначе будет тихо перезаписан обратно на body. */
+    requestAnimationFrame(()=>{
+      sheet.classList.add("open");
+      requestAnimationFrame(()=>q("#closeSet").focus());
+    });
+    document.body.style.overflow="hidden";
+    sheet.scrollTop=0;drawAll();
+  }else{
+    sheet.classList.remove("open");
+    document.body.style.overflow="";
+    /* Дожидаемся конца анимации выезда, прежде чем реально закрыть
+       <dialog> — иначе close() спрячет панель мгновенно. */
+    sheet.addEventListener("transitionend",()=>sheet.close(),{once:true});
+    q("#openSet").focus();
+  }
 };
 q("#openSet").onclick=()=>openSheet(true);
 q("#closeSet").onclick=()=>openSheet(false);
-addEventListener("keydown",e=>{if(e.key==="Escape")openSheet(false)});
+sheet.addEventListener("cancel",e=>{e.preventDefault();openSheet(false)});
+/* Backup — менее доверенный источник, чем случайно повреждённый
+   localStorage: любое несоответствие отклоняет файл целиком, до
+   какой-либо записи, а не чинит его по частям. */
 q("#restore").onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
   try{
     const d=JSON.parse(await f.text());
-    if(d.app!=="fuel-window"||!d.state)throw Error("это не копия Fuel Window");
+    validateBackup(d);
     localStorage.setItem(K,JSON.stringify(d.state));
     location.reload();
   }catch(x){q("#backupHint").innerHTML='<span class="attn">Не удалось восстановить: '+esc(x.message)+"</span>"}
@@ -825,19 +867,23 @@ q("#pdf").onchange=async e=>{
   const file=e.target.files[0];if(!file)return;
   q("#status").textContent="Разбираю PDF на устройстве…";
   try{
-    s.days=await FuelParser.parse(file);
-    s.date=s.days[0].date;
-    s.file={name:file.name,count:s.days.length};
+    const result=await FuelParser.parse(file);
+    const days=result.days,warnings=result.warnings||[];
+    /* Ничего не трогаем в живом состоянии, пока результат не прошёл
+       проверку — иначе неудачный импорт может стереть рабочий ростер,
+       как только сработает любой другой save() в приложении. */
+    if(!days.length)throw Error("Не удалось распознать дни в PDF");
+    s.days=days;
+    s.date=days[0].date;
+    s.file={name:file.name,count:days.length};
+    s.parserWarnings=warnings;
     s.icsStale=true;
-    const r=indexedDB.open("fuel-pdf",1);
-    r.onupgradeneeded=()=>r.result.createObjectStore("f");
-    r.onsuccess=()=>r.result.transaction("f","readwrite").objectStore("f").put(file,"roster");
     save();drawStatus();drawAll();
-  }catch(x){q("#status").textContent="Ошибка: "+x.message}
+  }catch(x){q("#status").textContent="Ошибка: "+x.message+". Предыдущий ростер сохранён."}
 };
 q("#clear").onclick=()=>{
   if(!confirm("Удалить все локальные данные приложения?"))return;
-  localStorage.clear();indexedDB.deleteDatabase("fuel-pdf");location.reload();
+  localStorage.removeItem(K);indexedDB.deleteDatabase("fuel-pdf");location.reload();
 };
 
 function drawStatus(){
@@ -854,21 +900,38 @@ schedule();
 /* ---------- service worker ---------- */
 /* iOS восстанавливает свёрнутый PWA из памяти: страница не грузится заново,
    поэтому обновление само не проверялось. Проверяем при запуске и каждый раз,
-   когда приложение возвращается на экран, и применяем найденное сразу. */
+   когда приложение возвращается на экран, и применяем найденное сразу — это
+   безопасно именно потому, что пользователь либо только что открыл
+   приложение, либо только что вернулся в него.
+   Обновление, обнаруженное, пока приложение открыто и видимо (updatefound
+   при document.hidden===false), могло бы прервать активный ввод — вместо
+   тихой перезагрузки показываем баннер и ждём явного клика. */
 if("serviceWorker"in navigator){
-  let reloading=false;
+  let reloading=false,safeReload=false;
+  const showBanner=()=>q("#update").classList.add("show");
+  const doReload=()=>{if(reloading)return;reloading=true;location.reload()};
   navigator.serviceWorker.register("./sw.js").then(r=>{
     const apply=()=>{if(!r.waiting)return false;r.waiting.postMessage("SKIP_WAITING");return true};
-    const check=()=>{if(!apply())r.update().catch(()=>{})};
+    /* check() запускается только при загрузке и при возврате из фона —
+       в оба момента ещё нечего было прервать перезагрузкой, поэтому
+       найденное здесь обновление можно применять без опроса ниже. */
+    const check=()=>{if(apply())safeReload=true;else r.update().catch(()=>{})};
     check();
     document.addEventListener("visibilitychange",()=>{if(!document.hidden)check()});
     r.addEventListener("updatefound",()=>r.installing?.addEventListener("statechange",()=>{
-      if(r.waiting&&!apply())q("#update").classList.add("show");
+      if(!r.waiting)return;
+      if(document.hidden)apply();else showBanner();
     }));
-    q("#reload").onclick=()=>apply();
+    q("#reload").onclick=()=>{if(apply())safeReload=true;else doReload()};
   });
   navigator.serviceWorker.addEventListener("controllerchange",()=>{
-    if(reloading)return;reloading=true;location.reload();
+    /* safeReload — разовый токен: помечает только что запрошенную здесь же
+       перезагрузку (check() нашёл уже готовое обновление, либо явный клик
+       «Обновить»). Для не найденных явно источников — включая обновление,
+       обнаруженное в фоне, чьё состояние могло устареть к этому моменту, —
+       решаем по текущей видимости, а не по тому, что было раньше. */
+    const safe=safeReload;safeReload=false;
+    if(safe||document.hidden)doReload();else showBanner();
   });
 }
 </script>

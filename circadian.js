@@ -1,4 +1,4 @@
-window.Circadian=(()=>{
+(function(){
 const Z={
 ALA:"Asia/Almaty",NQZ:"Asia/Almaty",TSE:"Asia/Almaty",AKX:"Asia/Aqtobe",GUW:"Asia/Atyrau",SCO:"Asia/Aqtau",URA:"Asia/Oral",UKK:"Asia/Almaty",KGF:"Asia/Almaty",KSN:"Asia/Almaty",PPK:"Asia/Almaty",PLX:"Asia/Almaty",CIT:"Asia/Almaty",
 ICN:"Asia/Seoul",KIX:"Asia/Tokyo",NRT:"Asia/Tokyo",AYT:"Europe/Istanbul",IST:"Europe/Istanbul",FRA:"Europe/Berlin",MUC:"Europe/Berlin",AMS:"Europe/Amsterdam",LHR:"Europe/London",CDG:"Europe/Paris",FCO:"Europe/Rome",MXP:"Europe/Rome",PRG:"Europe/Prague",WAW:"Europe/Warsaw",BCN:"Europe/Madrid",ATH:"Europe/Athens",
@@ -48,5 +48,6 @@ function get(day,days,ctx,fast,opts={}){
  return{zone,dest,delta,body,adapt:Math.abs(st.adapted),bodyZone:st.bodyZone,shortStay:st.shortStay,start,h,note,kind,away,hotel,bf:bf||null,report,release,dutyUsed:report!=null};
 }
 function instants(day,p){const base=Date.parse(day.date+"T00:00:00Z"),o=off(p.zone,day.date)*36e5;return{from:base+p.start*6e4-o,to:base+(p.start+p.h*60)*6e4-o}}
-return{get,Z,off,instants,stateAt};
+const Circadian={get,Z,off,instants,stateAt};
+if(typeof module!=="undefined"&&module.exports)module.exports=Circadian;else window.Circadian=Circadian;
 })();
