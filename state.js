@@ -132,6 +132,32 @@ function installFlatMainHeader(){
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",apply,{once:true});else apply();
 }
 
+/* На главной оставляем только то, что нужно для ежедневного использования:
+   таймер и roster. Существующий блок состава тела переносим в настройки
+   целиком, сохраняя те же id и обработчики — логика замеров не дублируется. */
+function installBodyCompositionInSettings(){
+  if(typeof document==="undefined")return;
+  const apply=()=>{
+    const metric=document.querySelector("#metric");
+    const card=metric&&metric.closest(".card");
+    if(!card||card.closest(".sheet-body"))return;
+    const label=card.previousElementSibling;
+    const sheetBody=document.querySelector("#sheet .sheet-body");
+    if(!sheetBody||!label||!label.classList.contains("slabel"))return;
+    const dataLabel=[...sheetBody.querySelectorAll(":scope > .slabel")].find(x=>x.textContent.trim()==="Данные");
+    if(!dataLabel)return;
+
+    const row=document.createElement("div");
+    row.className="row rowcol body-metrics-row";
+    while(card.firstChild)row.appendChild(card.firstChild);
+    card.appendChild(row);
+    label.textContent="Состав тела";
+    sheetBody.insertBefore(label,dataLabel);
+    sheetBody.insertBefore(card,dataLabel);
+  };
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",apply,{once:true});else apply();
+}
+
 const State={MODES,CONTEXTS,GOALS,DATE_RE,isRealDate,isValidDay,isValidMetric,validFastEnd,normalizeState,validateBackup,localDay};
-if(typeof module!=="undefined"&&module.exports)module.exports=State;else{window.State=State;installRosterTodaySync();installFlatMainHeader()}
+if(typeof module!=="undefined"&&module.exports)module.exports=State;else{window.State=State;installRosterTodaySync();installFlatMainHeader();installBodyCompositionInSettings()}
 })();
