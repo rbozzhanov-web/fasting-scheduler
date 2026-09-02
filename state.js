@@ -114,6 +114,24 @@ function installRosterTodaySync(){
   return()=>{if(timer)clearInterval(timer);if(observer)observer.disconnect()};
 }
 
+/* Главная sticky-шапка не должна выглядеть отдельной полосой. Используем
+   ровно тот же базовый фон страницы и убираем все материальные эффекты:
+   blur, дополнительный градиент, тень и разделитель. */
+function installFlatMainHeader(){
+  if(typeof document==="undefined")return;
+  const apply=()=>{
+    const hdr=document.querySelector(".hdr");
+    if(!hdr)return;
+    hdr.style.backgroundColor="var(--bg)";
+    hdr.style.backgroundImage="none";
+    hdr.style.backdropFilter="none";
+    hdr.style.webkitBackdropFilter="none";
+    hdr.style.boxShadow="none";
+    hdr.style.borderBottom="none";
+  };
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",apply,{once:true});else apply();
+}
+
 const State={MODES,CONTEXTS,GOALS,DATE_RE,isRealDate,isValidDay,isValidMetric,validFastEnd,normalizeState,validateBackup,localDay};
-if(typeof module!=="undefined"&&module.exports)module.exports=State;else{window.State=State;installRosterTodaySync()}
+if(typeof module!=="undefined"&&module.exports)module.exports=State;else{window.State=State;installRosterTodaySync();installFlatMainHeader()}
 })();
