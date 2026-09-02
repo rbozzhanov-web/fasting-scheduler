@@ -363,7 +363,7 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 <script src="roster-parser.js"></script>
 <script src="circadian.js"></script>
 <script>
-const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v23";
+const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v24";
 let s=JSON.parse(localStorage.getItem(K)||"{}");
 s.mode=s.mode||"16";s.context=s.context||"auto";s.days=s.days||[];s.metrics=s.metrics||[];s.goal=s.goal||"fat";
 s.bf=Object.assign({on:true,from:"06:30",to:"10:00"},s.bf);
@@ -711,7 +711,7 @@ function drawDay(){
   q("#stats").innerHTML=[
     ["Голодание",to+" → "+from],
     ["Питание",p.h+" ч"],
-    ["Время тела",(p.body>0?"+":"")+p.body.toFixed(1)+" ч"],
+    ["Время тела",Math.abs(p.body)<0.05?"как местное":(p.body>0?"опережает ":"отстаёт ")+Math.abs(p.body).toFixed(1)+" ч"],
     ["Адаптация",p.adapt.toFixed(1)+" ч"]
   ].map(x=>'<span><i>'+x[0]+'</i> '+x[1]+'</span>').join("");
   const note=q("#note");

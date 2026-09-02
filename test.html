@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fuel Window · проверки</title>
+<style>
+body{margin:0;padding:24px 16px;font:15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;
+  background:#f0f2f6;color:#111722}
+h1{font-size:22px;margin:0 0 4px}
+.sum{margin:0 0 18px;color:#666e7d}
+.sum b{color:#111722}
+.grp{font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#666e7d;margin:20px 0 8px}
+.t{background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:6px;display:flex;gap:10px;align-items:baseline}
+.t i{font-style:normal;font-weight:700;flex:0 0 auto}
+.ok i{color:#1d6b43}.bad i{color:#b03a2b}
+.bad{background:#fbe6e3}
+.t small{display:block;color:#666e7d;font-size:13px;margin-top:2px}
+@media(prefers-color-scheme:dark){body{background:#000;color:#eff2f7}.t{background:#131519}
+  .sum b{color:#eff2f7}.bad{background:#3a201c}.ok i{color:#6fd39a}.bad i{color:#ff9c8c}}
+</style>
+</head>
+<body>
+<h1>Fuel Window · проверки</h1>
+<p class="sum" id="sum">Выполняются…</p>
+<div id="out"></div>
+
+<script src="circadian.js"></script>
+<script>
+/* Проверки циркадной модели. Открыть файл в браузере — результат сразу на экране.
+   База ALA (UTC+5). Смысл величины body: на сколько часов время тела
+   опережает местное. Плюс — опережает, значит есть надо раньше. */
+const out=document.getElementById("out");
+let pass=0,fail=0;
+const grp=t=>out.insertAdjacentHTML("beforeend",'<p class="grp">'+t+"</p>");
+function check(name,cond,detail){
+  (cond?pass++:fail++);
+  out.insertAdjacentHTML("beforeend",'<div class="t '+(cond?"ok":"bad")+'"><i>'+(cond?"✓":"✗")+
+    '</i><span>'+name+(detail?'<small>'+detail+"</small>":"")+"</span></div>");
+}
+const day=(date,airports,kind="rest",code="OFF",times=[])=>({date,code,times,airports,kind});
+const noBf={breakfast:{on:false}};
+const hhmm=m=>String(Math.floor(((m%1440)+1440)%1440/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
+const BASE=720; // полдень — базовое начало окна для дня отдыха
+
+/* --- направление сдвига --------------------------------------------------- */
+grp("Направление циркадного сдвига");
+
+const west=[day("2026-06-01",["ALA"]),day("2026-06-02",["ALA","FRA"])];
+const pw=Circadian.get(west[1],west,"auto",16,noBf);
+check("На запад тело опережает местное время",pw.body>0,
+  "ALA→FRA: delta "+pw.delta+" ч, тело "+pw.body.toFixed(1)+" ч");
+check("На запад окно смещается раньше полудня",pw.start<BASE,
+  "начало окна "+hhmm(pw.start)+", базовое "+hhmm(BASE));
+
+const east=[day("2026-06-01",["ALA"]),day("2026-06-02",["ALA","ICN"])];
+const pe=Circadian.get(east[1],east,"auto",16,noBf);
+check("На восток тело отстаёт от местного времени",pe.body<0,
+  "ALA→ICN: delta "+pe.delta+" ч, тело "+pe.body.toFixed(1)+" ч");
+check("На восток окно смещается позже полудня",pe.start>BASE,
+  "начало окна "+hhmm(pe.start)+", базовое "+hhmm(BASE));
+
+check("Сдвиги в разные стороны противоположны",Math.sign(pw.start-BASE)===-Math.sign(pe.start-BASE),
+  "запад "+hhmm(pw.start)+" · восток "+hhmm(pe.start));
+
+/* --- адаптация ------------------------------------------------------------ */
+grp("Адаптация со временем");
+
+const stay=[day("2026-06-01",["ALA"]),day("2026-06-02",["ALA","ICN"])];
+for(let d=3;d<=12;d++)stay.push(day("2026-06-"+String(d).padStart(2,"0"),["ICN"]));
+const d1=Circadian.get(stay[1],stay,"auto",16,noBf);
+const d3=Circadian.get(stay[3],stay,"auto",16,noBf);
+const dEnd=Circadian.get(stay[stay.length-1],stay,"auto",16,noBf);
+check("Расхождение уменьшается со временем",Math.abs(d3.body)<Math.abs(d1.body),
+  "день 1: "+d1.body.toFixed(1)+" ч → день 3: "+d3.body.toFixed(1)+" ч");
+check("Через 10 дней адаптация полная",Math.abs(dEnd.body)<0.01,
+  "тело "+dEnd.body.toFixed(2)+" ч, адаптация "+dEnd.adapt.toFixed(1)+" ч");
+check("Адаптация не превышает разницу поясов",d3.adapt<=Math.abs(d3.delta)+1e-9,
+  "адаптация "+d3.adapt.toFixed(1)+" ч при разнице "+Math.abs(d3.delta)+" ч");
+check("На запад адаптация быстрее, чем на восток",(()=>{
+  const w=[day("2026-06-01",["ALA"]),day("2026-06-02",["ALA","FRA"]),day("2026-06-03",["FRA"])];
+  const e=[day("2026-06-01",["ALA"]),day("2026-06-02",["ALA","ICN"]),day("2026-06-03",["ICN"])];
+  return Circadian.get(w[2],w,"auto",16,noBf).adapt>Circadian.get(e[2],e,"auto",16,noBf).adapt;
+})(),"правило 1.5 ч/сутки на запад против 1 ч/сутки на восток");
+
+/* --- дом ------------------------------------------------------------------ */
+grp("Дома");
+const athome=[day("2026-06-01",["ALA"]),day("2026-06-02",["ALA"])];
+const ph=Circadian.get(athome[1],athome,"auto",16,noBf);
+check("Дома сдвига нет",ph.start===BASE&&Math.abs(ph.body)<0.01,
+  "начало окна "+hhmm(ph.start)+", тело "+ph.body.toFixed(1)+" ч");
+
+/* --- завтрак в гостинице -------------------------------------------------- */
+grp("Завтрак в гостинице");
+const bf={breakfast:{on:true,from:390,to:600}}; // 06:30–10:00
+const hotel=[day("2026-06-01",["ALA"]),day("2026-06-02",["ALA","DXB"]),day("2026-06-03",["DXB"])];
+const ph2=Circadian.get(hotel[2],hotel,"auto",16,bf);
+check("Вне базы окно открывается не позже чем за час до конца завтрака",ph2.start<=600-60,
+  "начало окна "+hhmm(ph2.start)+", завтрак до "+hhmm(600));
+check("Сдвиг под завтрак отмечен флагом",ph2.hotel===true);
+const homeBf=Circadian.get(athome[1],athome,"auto",16,bf);
+check("Дома завтрак окно не двигает",homeBf.start===BASE&&homeBf.hotel===false,
+  "начало окна "+hhmm(homeBf.start));
+const night=[day("2026-06-01",["ALA"]),day("2026-06-02",["ALA","DXB"]),
+             day("2026-06-03",["DXB"],"night","2210",["22:10","06:00"])];
+const pn=Circadian.get(night[2],night,"auto",16,bf);
+check("Ночной duty под завтрак не двигаем",pn.hotel===false,
+  "начало окна "+hhmm(pn.start)+" — приоритет сну перед ночным вылетом");
+
+/* --- окно и абсолютное время ---------------------------------------------- */
+grp("Окно питания");
+const p16=Circadian.get(athome[1],athome,"auto",16,noBf);
+const p18=Circadian.get(athome[1],athome,"auto",18,noBf);
+check("Длина окна равна 24 минус интервал",p16.h===8&&p18.h===6,
+  "16:8 → "+p16.h+" ч · 18:6 → "+p18.h+" ч");
+const inst=Circadian.instants(athome[1],p16);
+check("Абсолютные метки соответствуют длине окна",
+  Math.abs((inst.to-inst.from)/36e5-p16.h)<1e-6,
+  ((inst.to-inst.from)/36e5).toFixed(2)+" ч между открытием и закрытием");
+check("Открытие окна совпадает с местным временем станции",
+  new Date(inst.from).toLocaleTimeString("ru-RU",{timeZone:p16.zone,hour:"2-digit",minute:"2-digit"})===hhmm(p16.start),
+  "ожидалось "+hhmm(p16.start)+" по "+p16.zone);
+
+/* --- итог ----------------------------------------------------------------- */
+document.getElementById("sum").innerHTML= fail
+  ? "<b>"+fail+"</b> из "+(pass+fail)+" проверок не прошли."
+  : "Все <b>"+pass+"</b> проверок пройдены.";
+</script>
+</body>
+</html>
