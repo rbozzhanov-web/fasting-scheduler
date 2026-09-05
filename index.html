@@ -531,10 +531,14 @@ function drawFast(){
   q("#fastModePill").textContent=s.mode+":"+(24-s.mode);
 
   if(phase==="fast"){
-    q("#fastPhase").textContent="До окна питания";
-    q("#timer").textContent=Timer.dur(end-now);
-    q("#fastSub").textContent=Math.floor(pct)+"% голодания";
-    q("#endLabel").textContent="Окно питания в";
+    /* Без записанного завершения окно питания не открывается само — после
+       цели счётчик просто продолжает идти дальше (pct растёт выше 100%),
+       пока голодание не завершат вручную кнопкой. */
+    const overtime=now>=end;
+    q("#fastPhase").textContent=overtime?"Цель голодания достигнута":"До окна питания";
+    q("#timer").textContent=Timer.dur(overtime?now-end:end-now);
+    q("#fastSub").textContent=overtime?"Голодание продолжается — завершите вручную":Math.floor(pct)+"% голодания";
+    q("#endLabel").textContent=overtime?"Цель была в":"Окно питания в";
     q("#ends").textContent=clock(end);
   }else if(phase==="eat"){
     q("#fastPhase").textContent="С начала окна питания";

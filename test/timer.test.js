@@ -21,20 +21,33 @@ test('phase: fasting before the window opens', () => {
   assert.ok(Math.abs(r.pct - 50) < 0.01);
 });
 
-test('phase: eating after the window opens, with elapsed-time pct', () => {
+test('the eating window never opens on its own: fasting keeps counting past the target', () => {
   const start = new Date('2026-03-10T20:00:00Z');
-  const now = new Date('2026-03-11T14:15:34Z');
+  const now = new Date('2026-03-11T14:15:34Z'); // 2h15m34s past the 16h target
   const r = computeFastState(start.toISOString(), '16', now);
-  assert.equal(r.phase, 'eat');
-  assert.equal(dur(now - r.end), '02:15:34');
-  const expectedPct = (2 * 3600e3 + 15 * 60e3 + 34e3) / (8 * 3600e3) * 100;
+  assert.equal(r.phase, 'fast');
+  assert.equal(r.hasActualEnd, false);
+  const expectedPct = (18 * 3600e3 + 15 * 60e3 + 34e3) / (16 * 3600e3) * 100;
   assert.ok(Math.abs(r.pct - expectedPct) < 0.01);
 });
 
-test('phase: closed (over) once the eating window has passed', () => {
+test('a completion recorded well past the target is accepted as the actual end', () => {
   const start = new Date('2026-03-10T20:00:00Z');
+  const lateEnd = new Date('2026-03-11T14:15:34Z'); // finished manually, 2h15m34s late
+  const now = new Date(lateEnd.getTime() + 30 * 60e3);
+  const r = computeFastState(start.toISOString(), '16', now, lateEnd.toISOString());
+  assert.equal(r.phase, 'eat');
+  assert.equal(r.hasActualEnd, true);
+  assert.equal(r.endedEarly, false);
+  assert.equal(r.end.toISOString(), lateEnd.toISOString());
+  assert.equal(dur(now - r.end), '00:30:00');
+});
+
+test('phase: closed (over) once the eating window has passed a recorded completion', () => {
+  const start = new Date('2026-03-10T20:00:00Z');
+  const completedAt = new Date(start.getTime() + 16 * 3600e3); // finished right at the target
   const now = new Date('2026-03-12T00:00:00Z');
-  const r = computeFastState(start.toISOString(), '16', now);
+  const r = computeFastState(start.toISOString(), '16', now, completedAt.toISOString());
   assert.equal(r.phase, 'over');
 });
 
@@ -51,14 +64,19 @@ test('all four modes produce a consistent planned split when not ended early', (
 test('manual start entry uses the same phase logic', () => {
   const manualStart = new Date(Date.now() - 16.5 * 3600e3).toISOString();
   const r = computeFastState(manualStart, '16', new Date());
-  assert.equal(r.phase, 'eat');
+  assert.equal(r.phase, 'fast');
+  assert.ok(r.pct > 100);
 });
 
-test('changing mode with the same fastStart re-derives the phase before completion', () => {
+test('changing mode with the same fastStart re-derives the target before completion', () => {
   const start = new Date('2026-03-10T20:00:00Z');
-  const now = new Date('2026-03-11T09:00:00Z');
-  assert.equal(computeFastState(start.toISOString(), '16', now).phase, 'fast');
-  assert.equal(computeFastState(start.toISOString(), '12', now).phase, 'eat');
+  const now = new Date('2026-03-11T09:00:00Z'); // 13h elapsed
+  const at16 = computeFastState(start.toISOString(), '16', now);
+  const at12 = computeFastState(start.toISOString(), '12', now);
+  assert.equal(at16.phase, 'fast');
+  assert.ok(at16.pct < 100); // still short of a 16h target
+  assert.equal(at12.phase, 'fast'); // no auto-switch to eat, even past a 12h target
+  assert.ok(at12.pct > 100);
 });
 
 test('changing mode after completion preserves the factual fastEnd', () => {
@@ -81,9 +99,10 @@ test('midnight crossing does not disturb phase derivation', () => {
 
 test('elapsed counter reaches maximum just before transitioning to over', () => {
   const start = new Date('2026-03-10T20:00:00Z');
-  const r = computeFastState(start.toISOString(), '16', start);
+  const completedAt = new Date(start.getTime() + 16 * 3600e3); // finished right at the target
+  const r = computeFastState(start.toISOString(), '16', completedAt, completedAt.toISOString());
   const justBeforeOver = new Date(r.end.getTime() + r.eatMs - 1000);
-  const state = computeFastState(start.toISOString(), '16', justBeforeOver);
+  const state = computeFastState(start.toISOString(), '16', justBeforeOver, completedAt.toISOString());
   assert.equal(state.phase, 'eat');
   assert.equal(dur(justBeforeOver - state.end), '07:59:59');
 });
