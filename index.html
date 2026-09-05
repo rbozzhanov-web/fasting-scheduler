@@ -30,9 +30,9 @@
   --track:rgba(255,255,255,.10); --zone:rgba(242,169,62,.46); --pick:1;
   --k-rest:#2f7d52; --k-duty:#3d6f9e; --k-early:#9a5f11; --k-night:#6a5ca8;
   --glass-blur:blur(28px) saturate(180%); --glass-hl:rgba(255,255,255,.75); --glass-border:rgba(255,255,255,.58);
-  --material-border:rgba(17,23,34,.08); --material-shadow:0 1px 0 rgba(255,255,255,.72) inset,0 10px 26px rgba(20,35,60,.08);
+  --material-border:rgba(17,23,34,.08); --material-shadow:0 1px 1.5px rgba(255,255,255,.72) inset,0 10px 26px rgba(20,35,60,.08);
   --glass-control:rgba(255,255,255,.64); --glass-control-border:rgba(255,255,255,.82);
-  --glass-control-shadow:0 1px 0 rgba(255,255,255,.96) inset,0 -1px 0 rgba(17,23,34,.05) inset,0 5px 14px rgba(20,35,60,.14);
+  --glass-control-shadow:0 1px 1.5px rgba(255,255,255,.96) inset,0 -1px 1.5px rgba(17,23,34,.05) inset,0 5px 14px rgba(20,35,60,.14);
   --glass-spec:linear-gradient(180deg,rgba(255,255,255,.72),rgba(255,255,255,.16) 46%,rgba(255,255,255,0) 70%);
   /* iOS 26 разделяет слои: карточки остаются спокойным материалом контента,
      а Liquid Glass принадлежит навигации и элементам управления. Blur есть
@@ -65,9 +65,9 @@
   --veil:rgba(255,255,255,.14); --veil-2:rgba(255,255,255,.24); --veil-line:rgba(255,255,255,.14);
   --track:rgba(255,255,255,.12); --zone:rgba(242,169,62,.44); --pick:1;
   --glass-blur:blur(28px) saturate(170%); --glass-hl:rgba(255,255,255,.16); --glass-border:rgba(255,255,255,.13);
-  --material-border:rgba(255,255,255,.10); --material-shadow:0 1px 0 rgba(255,255,255,.075) inset,0 12px 28px rgba(0,0,0,.30);
+  --material-border:rgba(255,255,255,.10); --material-shadow:0 1px 1.5px rgba(255,255,255,.075) inset,0 12px 28px rgba(0,0,0,.30);
   --glass-control:rgba(65,69,80,.58); --glass-control-border:rgba(255,255,255,.18);
-  --glass-control-shadow:0 1px 0 rgba(255,255,255,.20) inset,0 -1px 0 rgba(0,0,0,.18) inset,0 6px 16px rgba(0,0,0,.32);
+  --glass-control-shadow:0 1px 1.5px rgba(255,255,255,.20) inset,0 -1px 1.5px rgba(0,0,0,.18) inset,0 6px 16px rgba(0,0,0,.32);
   --glass-spec:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.055) 48%,rgba(255,255,255,0) 72%);
   --sunken:rgba(6,8,12,.55); --sunken-line:rgba(255,255,255,.07);
   --ctrl:rgba(56,61,72,.92); --ctrl-line:rgba(255,255,255,.14);
@@ -123,7 +123,7 @@ button{cursor:pointer}p,span,b,small{overflow-wrap:anywhere}.tmrow>*{min-width:0
 .hdr-in{max-width:640px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
 h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-space:nowrap}
 .hdr-sub{font-size:13px;color:var(--dim);margin-top:2px}
-.gear{flex:0 0 auto;width:42px;height:42px;padding:0;border:1px solid var(--glass-control-border);border-radius:21px;background-color:var(--glass-control);background-image:var(--glass-spec);box-shadow:var(--glass-control-shadow);color:var(--accent-ink);display:grid;place-items:center;transition:transform .12s ease,box-shadow .2s ease}
+.gear{flex:0 0 auto;width:42px;height:42px;padding:0;border:1px solid var(--glass-control-border);border-radius:21px;background-color:var(--glass-control);background-image:var(--glass-spec);background-clip:padding-box;box-shadow:var(--glass-control-shadow);color:var(--accent-ink);display:grid;place-items:center;transition:transform .12s ease,box-shadow .2s ease}
 .gear:active{transform:scale(.94)}
 .gear svg{width:22px;height:22px}
 .sheet{position:fixed;inset:0;z-index:40;margin:0;width:100%;height:100%;max-width:none;max-height:none;border:none;padding:0;background:var(--bg-blur);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);color:var(--text);overflow-y:auto;-webkit-overflow-scrolling:touch;visibility:hidden;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1),visibility .3s}
@@ -138,7 +138,7 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 .wrap{max-width:640px;margin:0 auto;padding:0 16px calc(env(safe-area-inset-bottom,0px) + 40px)}
 .slabel{font-size:12px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--dim);margin:22px 6px 8px}
 .slabel:first-child{margin-top:16px}
-.card{background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;border:1px solid var(--material-border);border-radius:var(--r);padding:14px;box-shadow:var(--material-shadow)}
+.card{background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;border:1px solid var(--material-border);border-radius:var(--r);background-clip:padding-box;padding:14px;box-shadow:var(--material-shadow)}
 /* Карточки — слой контента, а не Liquid Glass: спокойная полупрозрачная
    заливка сохраняет глубину, не конкурируя с плавающими контролами. */
 .sheet .card{backdrop-filter:none;-webkit-backdrop-filter:none}
@@ -176,13 +176,13 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-spa
 /* ---------- buttons ---------- */
 .btn{border:0;border-radius:24px;padding:13px 16px;min-height:48px;font-weight:650;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s ease,opacity .15s}
 .btn:active{transform:scale(.985)}
-.btn-act{width:100%;background-color:var(--act);background-image:var(--glass-spec);color:var(--on-act);box-shadow:0 1px 0 rgba(255,255,255,.68) inset,0 5px 14px rgba(0,0,0,.20)}
+.btn-act{width:100%;background-color:var(--act);background-image:var(--glass-spec);color:var(--on-act);box-shadow:0 1px 1.5px rgba(255,255,255,.68) inset,0 5px 14px rgba(0,0,0,.20)}
 .acts{display:flex;gap:8px;margin-top:12px}
 .acts .btn-act{flex:1 1 auto}
 .acts .btn-ghost{flex:0 0 auto;font-size:14px}
-.btn-blue{width:100%;margin-top:14px;background-color:var(--accent);background-image:var(--glass-spec);color:var(--on-accent);box-shadow:0 1px 0 rgba(255,255,255,.30) inset,0 5px 14px rgba(0,0,0,.20)}
-.btn-ghost{background-color:var(--veil);background-image:var(--glass-spec);color:var(--on-hero);border:1px solid var(--veil-2);box-shadow:0 1px 0 rgba(255,255,255,.18) inset,0 4px 12px rgba(0,0,0,.12)}
-.btn-quiet{background-color:var(--glass-control);background-image:var(--glass-spec);color:var(--text);border:1px solid var(--glass-control-border);box-shadow:var(--glass-control-shadow)}
+.btn-blue{width:100%;margin-top:14px;background-color:var(--accent);background-image:var(--glass-spec);color:var(--on-accent);box-shadow:0 1px 1.5px rgba(255,255,255,.30) inset,0 5px 14px rgba(0,0,0,.20)}
+.btn-ghost{background-color:var(--veil);background-image:var(--glass-spec);color:var(--on-hero);border:1px solid var(--veil-2);background-clip:padding-box;box-shadow:0 1px 1.5px rgba(255,255,255,.18) inset,0 4px 12px rgba(0,0,0,.12)}
+.btn-quiet{background-color:var(--glass-control);background-image:var(--glass-spec);color:var(--text);border:1px solid var(--glass-control-border);background-clip:padding-box;box-shadow:var(--glass-control-shadow)}
 .btn-link{width:100%;background:none;color:var(--on-hero-dim);min-height:38px;padding:8px;font-size:13px;font-weight:600;margin-top:4px}
 .btn-danger{background:var(--bad-bg);color:var(--bad-fg);border:1px solid var(--ctrl-line)}
 .mini{min-height:38px;padding:8px 14px;font-size:14px;border-radius:19px}
