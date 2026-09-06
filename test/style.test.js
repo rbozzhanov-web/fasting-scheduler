@@ -9,8 +9,36 @@ const test = require("node:test");
 const { pathToFileURL } = require("node:url");
 const vm = require("node:vm");
 
+// A Playwright browser cache (its own install, or one shared by a dev
+// container) ships a real Chromium build even where no system browser is
+// installed at all. The cache layout varies: a version-numbered directory
+// ("chromium-1194/chrome-linux/chrome") normally, or in some containers a
+// stable "chromium" entry that is itself already the binary (a symlink) --
+// handle both instead of guessing one exact path.
+function findPlaywrightChromium() {
+  const bases = [
+    process.env.PLAYWRIGHT_BROWSERS_PATH,
+    path.join(os.homedir(), ".cache", "ms-playwright"),
+    path.join(os.homedir(), "Library", "Caches", "ms-playwright"),
+  ].filter(Boolean);
+  for (const base of bases) {
+    let entries;
+    try { entries = fs.readdirSync(base); } catch { continue; }
+    for (const name of entries.filter(n => /^chromium(-\d+)?$/.test(n))) {
+      const entry = path.join(base, name);
+      let stat;
+      try { stat = fs.statSync(entry); } catch { continue; }
+      if (stat.isFile()) return entry;
+      const nested = path.join(entry, "chrome-linux", "chrome");
+      if (fs.existsSync(nested)) return nested;
+    }
+  }
+  return null;
+}
+
 const chromeCandidates = [
   process.env.CHROME_BIN,
+  findPlaywrightChromium(),
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   "/Applications/Chromium.app/Contents/MacOS/Chromium",
   "/usr/bin/google-chrome",
@@ -20,6 +48,10 @@ const chromeCandidates = [
 ].filter(Boolean);
 
 const chromePath = () => chromeCandidates.find(candidate => fs.existsSync(candidate));
+// Headless Chrome refuses to run as root without --no-sandbox (common in
+// containerized dev/CI runners). Only added when actually needed: it's the
+// OS sandbox being disabled, not something to hand out for free elsewhere.
+const isRoot = typeof process.getuid === "function" && process.getuid() === 0;
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -88,6 +120,7 @@ async function withPage(run) {
     "--disable-gpu",
     "--no-first-run",
     "--no-default-browser-check",
+    ...(isRoot ? ["--no-sandbox"] : []),
     `--remote-debugging-port=${port}`,
     `--user-data-dir=${profile}`,
     pageUrl,
