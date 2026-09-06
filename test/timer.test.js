@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { dur, computeFastState, actionLabel, closeNotificationBody, validEarlyEnd, validActualEnd, cycleEventTimes, patchActiveIcs } = require('../timer.js');
+const { normalizeState } = require('../state.js');
 
 test('dur() formats a millisecond delta as HH:MM:SS', () => {
   assert.equal(dur(0), '00:00:00');
@@ -203,11 +204,32 @@ test('finish-now validation rejects a completion after the current nominal end',
   assert.equal(validEarlyEnd(start, nominal, '2026-03-11T13:00:00Z'), null);
 });
 
-test('recorded factual fastEnd remains valid for up to one cycle day', () => {
+test('recorded factual fastEnd has no fixed duration ceiling, just "not before start"', () => {
   const start = new Date('2026-03-10T20:00:00Z');
   assert.equal(validActualEnd(start, '2026-03-11T13:00:00Z').toISOString(), '2026-03-11T13:00:00.000Z');
   assert.equal(validActualEnd(start, '2026-03-11T20:00:00Z').toISOString(), '2026-03-11T20:00:00.000Z');
-  assert.equal(validActualEnd(start, '2026-03-11T20:00:01Z'), null);
+  assert.equal(validActualEnd(start, '2026-03-11T20:00:01Z').toISOString(), '2026-03-11T20:00:01.000Z', 'a day and one second later is still a valid completion -- extended fasts are expected');
+  assert.equal(validActualEnd(start, '2026-03-09T00:00:00Z'), null, 'still rejects a completion before the fast started');
+});
+
+test('recorded factual fastEnd is rejected if it lands in the future', () => {
+  const start = new Date(Date.now() - 40 * 3600e3); // 40h ago -- an extended fast in progress
+  assert.equal(validActualEnd(start, new Date(Date.now() + 3600e3)), null);
+  assert.ok(validActualEnd(start, new Date()), 'finishing right now, however long the fast has run, is accepted');
+});
+
+test('a completion recorded well past 24h survives the reload that follows it (state.js does not revive the fast)', () => {
+  // Regression guard: timer.js's validActualEnd and state.js's validFastEnd
+  // used to share a "within 24h of start" ceiling. Once finishing a fast
+  // stopped being capped at 24h here, state.js still stripped a late fastEnd
+  // back out on the very next reload -- the one finishFast() itself triggers
+  // -- silently resurrecting a fast the user had just manually stopped.
+  const start = new Date(Date.now() - 30 * 3600e3); // 30h ago
+  const lateEnd = new Date(Date.now() - 2 * 3600e3); // finished 2h ago, 28h into the fast
+  assert.ok(validActualEnd(start, lateEnd), 'timer.js accepts the late completion');
+  const raw = JSON.stringify({ mode: '16', fastStart: start.toISOString(), fastEnd: lateEnd.toISOString() });
+  const { state } = normalizeState(raw);
+  assert.equal(state.fastEnd, lateEnd.toISOString(), 'state.js keeps it on reload instead of reviving the fast');
 });
 
 test('active fast action is real completion now', () => {

@@ -687,10 +687,13 @@ function icsFold(line){
   return out+cur;
 }
 
-/* Истёкший цикл buildIcs() не выгружает, поэтому и считаться он не должен:
-   иначе интерфейс обещает день вперёд, а календарь приходит пустым.
-   close = fastStart + 24 ч независимо от режима (голодание + окно). */
-const activeFast=()=>!!s.fastStart&&new Date(s.fastStart).getTime()+864e5>Date.now();
+/* Голодание не останавливается само по достижении цели — значит, «идёт ли
+   сейчас голодание» больше не «прошли ли сутки с начала», а буквально фаза
+   таймера: пока пользователь не нажал «Завершить», оно активно хоть на
+   сороковом часу. Фиксированный потолок в сутки раньше совпадал с этим не
+   всегда — на длинном голодании он гасил «активный цикл» в buildIcs()/
+   icsCount(), хотя таймер на экране продолжал идти. */
+const activeFast=()=>!!s.fastStart&&Timer.computeFastState(s.fastStart,s.mode,new Date()).phase==="fast";
 const icsCount=()=>planWindows().length+(activeFast()?1:0);
 
 /* Окна берём из плана roster — по типу самого дня, а не по выбранному
@@ -877,12 +880,13 @@ function drawMetrics(){
 const drawAll=()=>{drawHeader();drawDay();drawMetrics();drawFast();drawNotify();drawIcs();drawBackup()};
 
 /* ---------- events ---------- */
-q("#fastBtn").onclick=()=>{
-  const now=new Date(),start=s.fastStart?new Date(s.fastStart):null;
-  if(start&&now<new Date(start.getTime()+ +s.mode*36e5)){delete s.fastStart;delete s.fastTz;delete s.fastTzOff}
-  else{s.fastStart=now.toISOString();s.fastTz=devZone();s.fastTzOff=devOff()}
-  q("#startWrap").hidden=true;fastChanged();
-};
+/* #fastBtn и #applyStart не получают обработчик здесь: timer.js вешает
+   свой в фазе перехвата (capture) на document и всегда вызывает
+   preventDefault()+stopImmediatePropagation() для этих двух кнопок, так что
+   локальный обработчик тут никогда не выполнился бы. Старт/финиш голодания
+   живёт в одном месте — installBrowserGuards() в timer.js (finishFast() /
+   startFreshCycle()) — и после любого из них страница перезагружается,
+   так что s здесь просто перечитывается заново из localStorage. */
 q("#editStart").onclick=()=>{
   const w=q("#startWrap");w.hidden=!w.hidden;
   if(w.hidden)return;
@@ -890,13 +894,6 @@ q("#editStart").onclick=()=>{
   i.max=localValue(new Date());
   i.value=localValue(s.fastStart?new Date(s.fastStart):new Date());
   i.focus();
-};
-q("#applyStart").onclick=()=>{
-  const v=q("#startAt").value;if(!v)return;
-  const t=new Date(v);if(isNaN(t))return;
-  s.fastStart=(t>new Date()?new Date():t).toISOString();
-  s.fastTz=devZone();s.fastTzOff=devOff();
-  q("#startWrap").hidden=true;fastChanged();
 };
 q("#mode").onchange=e=>{s.mode=e.target.value;s.icsStale=true;save();drawDay();fastChanged()};
 q("#ctxSeg").onclick=e=>{

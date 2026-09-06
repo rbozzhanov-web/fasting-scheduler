@@ -25,13 +25,17 @@ const isValidMetric=m=>!!m&&typeof m==="object"&&typeof m.date==="string"&&!isNa
 
 /* fastEnd — исторический факт завершения текущего цикла. Он не должен
    становиться невалидным только потому, что пользователь потом поменял
-   режим. Ограничиваем его сутками от старта: это покрывает все режимы и
-   отсекает повреждённые/чужие даты. */
-const validFastEnd=(start,mode,end)=>{
+   режим — и, с тех пор как голодание останавливается только вручную, не
+   должен становиться невалидным и из-за того, что оно шло дольше суток.
+   Единственные осмысленные границы: не раньше старта и не позже текущего
+   момента (будущую дату вручную не запишешь). Граница именно по «сейчас» —
+   не по старту — так однажды принятое значение не станет задним числом
+   невалидным на следующей перезагрузке: Date.now() только растёт. */
+const validFastEnd=(start,end)=>{
   if(start==null||end==null)return false;
   const a=new Date(start),b=new Date(end);
   if(!Number.isFinite(a.getTime())||!Number.isFinite(b.getTime()))return false;
-  return b.getTime()>=a.getTime()&&b.getTime()<=a.getTime()+864e5;
+  return b.getTime()>=a.getTime()&&b.getTime()<=Date.now();
 };
 
 function normalizeState(raw){
@@ -54,7 +58,7 @@ function normalizeState(raw){
   s.parserWarnings=Array.isArray(s.parserWarnings)?s.parserWarnings:[];
   if(s.date!=null&&!isRealDate(s.date))delete s.date;
   if(s.fastStart!=null&&isNaN(new Date(s.fastStart)))delete s.fastStart;
-  if(s.fastEnd!=null&&!validFastEnd(s.fastStart,s.mode,s.fastEnd))delete s.fastEnd;
+  if(s.fastEnd!=null&&!validFastEnd(s.fastStart,s.fastEnd))delete s.fastEnd;
   return{state:s,corrupted};
 }
 
@@ -70,7 +74,7 @@ function validateBackup(d){
   if(!Array.isArray(st.days)||!st.days.every(isValidDay))throw new Error("повреждён ростер в копии");
   if(!Array.isArray(st.metrics)||!st.metrics.every(isValidMetric))throw new Error("повреждены замеры в копии");
   if(st.fastStart!=null&&isNaN(new Date(st.fastStart)))throw new Error("некорректное начало голодания");
-  if(st.fastEnd!=null&&!validFastEnd(st.fastStart,st.mode,st.fastEnd))throw new Error("некорректное окончание голодания");
+  if(st.fastEnd!=null&&!validFastEnd(st.fastStart,st.fastEnd))throw new Error("некорректное окончание голодания");
 }
 
 /* Локальная календарная дата устройства, без UTC-сдвига. Она нужна для
