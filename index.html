@@ -592,9 +592,11 @@ function drawFast(){
      «Голодание» под шкалой — вторые часы: сколько прошло с самого начала
      голодания, всегда вперёд. Во время fast это now-start (живое, растёт
      вместе с большим таймером); после завершения — end-start, зафиксированный
-     факт длительности цикла. */
-  const elapsed=start?Timer.dur((phase==="fast"?now:end)-start):null;
-  q("#labFast").textContent="Голодание "+s.mode+" ч"+(elapsed?" · "+elapsed:"");
+     факт длительности цикла. Без секунд и без целевой цифры режима — это
+     справочная строка, а не ещё один секундомер; сами секунды тикают на
+     большом таймере выше. */
+  const elapsed=start?Timer.dur((phase==="fast"?now:end)-start).slice(0,5):null;
+  q("#labFast").textContent="Голодание"+(elapsed?" · "+elapsed:"");
   q("#labEat").textContent="Окно "+(24-s.mode)+" ч";
   q("#fastBtn").textContent=phase==="fast"?"Завершить":"Начать голодание";
   const align=q("#planNote");align.hidden=true;
