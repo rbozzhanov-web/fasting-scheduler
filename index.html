@@ -587,7 +587,14 @@ function drawFast(){
   q("#cyc").classList.toggle("eat",phase==="eat");
   q("#cycEat").style.width=(100-split)+"%";
   q("#cycFill").style.width=done+"%";
-  q("#labFast").textContent="Голодание "+s.mode+" ч";
+  /* Большой таймер выше — это одни часы (обратный отсчёт до цели, потом
+     отсчёт сверх неё, потом отсчёт с начала окна). Рядом с подписью
+     «Голодание» под шкалой — вторые часы: сколько прошло с самого начала
+     голодания, всегда вперёд. Во время fast это now-start (живое, растёт
+     вместе с большим таймером); после завершения — end-start, зафиксированный
+     факт длительности цикла. */
+  const elapsed=start?Timer.dur((phase==="fast"?now:end)-start):null;
+  q("#labFast").textContent="Голодание "+s.mode+" ч"+(elapsed?" · "+elapsed:"");
   q("#labEat").textContent="Окно "+(24-s.mode)+" ч";
   q("#fastBtn").textContent=phase==="fast"?"Завершить":"Начать голодание";
   const align=q("#planNote");align.hidden=true;
