@@ -599,6 +599,7 @@ function drawFast(){
   q("#labFast").textContent="Голодание"+(elapsed?" · "+elapsed:"");
   q("#labEat").textContent="Окно "+(24-s.mode)+" ч";
   q("#fastBtn").textContent=phase==="fast"?"Завершить":"Начать голодание";
+  q("#editStart").textContent=(phase==="eat"||phase==="over")?"Другое начало окна":"Другое время";
   const align=q("#planNote");align.hidden=true;
   if(start&&end&&phase==="fast"&&s.days.length){
     const plans=planWindows();if(plans.length){const near=plans.reduce((a,b)=>Math.abs(b.from-end.getTime())<Math.abs(a.from-end.getTime())?b:a),diff=end.getTime()-near.from;
@@ -900,8 +901,15 @@ q("#editStart").onclick=()=>{
   const w=q("#startWrap");w.hidden=!w.hidden;
   if(w.hidden)return;
   const i=q("#startAt");
+  /* В fast/idle правим начало голодания (fastStart), в eat/over — начало уже
+     открытого окна питания (fastEnd): тот же контрол, тот же «Другое время»,
+     но правит то, что сейчас идёт, а не всегда самый первый момент цикла. */
+  const{phase}=Timer.computeFastState(s.fastStart,s.mode,new Date(),s.fastEnd);
+  const editingEnd=phase==="eat"||phase==="over";
   i.max=localValue(new Date());
-  i.value=localValue(s.fastStart?new Date(s.fastStart):new Date());
+  i.min=editingEnd&&s.fastStart?localValue(new Date(s.fastStart)):"";
+  i.value=localValue(editingEnd?(s.fastEnd?new Date(s.fastEnd):new Date()):(s.fastStart?new Date(s.fastStart):new Date()));
+  i.setAttribute("aria-label",editingEnd?"Время начала окна питания":"Время начала голодания");
   i.focus();
 };
 q("#mode").onchange=e=>{s.mode=e.target.value;s.icsStale=true;save();drawDay();fastChanged()};
