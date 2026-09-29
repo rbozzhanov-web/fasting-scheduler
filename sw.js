@@ -1,4 +1,4 @@
-const P="fuel-window-",C=P+"v33";
+const P="fuel-window-",C=P+"v34";
 const A=["./","./index.html","./roster-parser.js","./escrew-bridge.js","./circadian.js","./timer.js","./state.js","./icon.svg","./icon-180.png","./icon-512.png","./manifest.webmanifest","./vendor/pdf.mjs","./vendor/pdf.worker.mjs","./vendor/PDFJS-LICENSE.txt","./sw.js"];
 
 self.addEventListener("install",e=>e.waitUntil(caches.open(C).then(c=>c.addAll(A))));
