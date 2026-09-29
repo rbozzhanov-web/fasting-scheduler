@@ -996,9 +996,9 @@ q("#pdf").onchange=async e=>{
        проверку — иначе неудачный импорт может стереть рабочий ростер,
        как только сработает любой другой save() в приложении. */
     if(!days.length)throw Error("Не удалось распознать дни в PDF");
-    s.days=days;
-    s.date=days[0].date;
-    s.file={name:file.name,count:days.length};
+    s.days=State.mergeRoster(s.days,days);
+    s.date=s.days.some(x=>x.date===today())?today():days[0].date;
+    s.file={name:file.name,count:s.days.length};
     s.parserWarnings=warnings;
     s.icsStale=true;
     save();drawStatus();drawAll();

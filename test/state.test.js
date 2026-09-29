@@ -194,3 +194,29 @@ test('normalizeState: a real selected day is kept even when no roster is loaded'
   const { state } = normalizeState(JSON.stringify({ date: '2026-01-01' }));
   assert.equal(state.date, '2026-01-01');
 });
+
+const { mergeRoster, rosterCutoff } = require('../state.js');
+const mk = (date, code = 'X') => ({ ...validDay, date, code });
+
+test('rosterCutoff: first day of the previous month', () => {
+  assert.equal(rosterCutoff('2026-09-29'), '2026-08-01');
+  assert.equal(rosterCutoff('2026-01-15'), '2025-12-01');
+});
+
+test('mergeRoster: keeps previous, current and next month across imports', () => {
+  const aug = [mk('2026-08-01'), mk('2026-08-31')];
+  const sep = [mk('2026-09-01'), mk('2026-09-30')];
+  const oct = [mk('2026-10-01'), mk('2026-10-31')];
+  let days = mergeRoster([], aug, '2026-09-29');
+  days = mergeRoster(days, sep, '2026-09-29');
+  days = mergeRoster(days, oct, '2026-09-29');
+  assert.deepEqual(days.map(d => d.date), ['2026-08-01', '2026-08-31', '2026-09-01', '2026-09-30', '2026-10-01', '2026-10-31']);
+});
+
+test('mergeRoster: new import wins on overlapping dates, older-than-previous-month is pruned, incoming is never cut', () => {
+  const old = [mk('2026-07-31'), mk('2026-09-05', 'OLD')];
+  const merged = mergeRoster(old, [mk('2026-09-05', 'NEW')], '2026-09-29');
+  assert.deepEqual(merged.map(d => d.date), ['2026-09-05']);
+  assert.equal(merged[0].code, 'NEW');
+  assert.equal(mergeRoster([], [mk('2020-01-01')], '2026-09-29').length, 1);
+});

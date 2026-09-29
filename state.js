@@ -162,6 +162,26 @@ function installBodyCompositionInSettings(){
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",apply,{once:true});else apply();
 }
 
-const State={MODES,CONTEXTS,GOALS,DATE_RE,isRealDate,isValidDay,isValidMetric,validFastEnd,normalizeState,validateBackup,localDay};
+/* Ростер хранится не одним PDF, а скользящим окном: предыдущий, текущий и
+   следующий месяц (минимум) собираются из нескольких импортов. Новый
+   импорт перекрывает совпавшие даты, остальные дни остаются; из старого
+   отбрасывается только то, что раньше первого числа предыдущего месяца.
+   Дни нового импорта не режем никогда — иначе загрузка старого PDF
+   дала бы пустой ростер. Будущее не режем: следующий месяц обычно
+   приходит заранее. */
+const rosterCutoff=(today)=>{
+  const [y,m]=today.split("-").map(Number);
+  const d=new Date(Date.UTC(y,m-2,1));
+  return d.toISOString().slice(0,10);
+};
+function mergeRoster(existing,incoming,today){
+  const cutoff=rosterCutoff(today||localDay());
+  const byDate=new Map();
+  for(const d of existing||[])if(d.date>=cutoff)byDate.set(d.date,d);
+  for(const d of incoming)byDate.set(d.date,d);
+  return[...byDate.values()].sort((a,b)=>a.date.localeCompare(b.date));
+}
+
+const State={MODES,CONTEXTS,GOALS,DATE_RE,isRealDate,isValidDay,isValidMetric,validFastEnd,normalizeState,validateBackup,localDay,rosterCutoff,mergeRoster};
 if(typeof module!=="undefined"&&module.exports)module.exports=State;else{window.State=State;installRosterTodaySync();installFlatMainHeader();installBodyCompositionInSettings()}
 })();
