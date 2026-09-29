@@ -124,6 +124,7 @@ button{cursor:pointer}p,span,b,small{overflow-wrap:anywhere}.tmrow>*{min-width:0
 h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-space:nowrap}
 .hdr-sub{font-size:13px;color:var(--dim);margin-top:2px}
 .gear{flex:0 0 auto;width:42px;height:42px;padding:0;border:1px solid var(--glass-control-border);border-radius:21px;background-color:var(--glass-control);background-image:var(--glass-spec);background-clip:padding-box;box-shadow:var(--glass-control-shadow);color:var(--accent-ink);display:grid;place-items:center;transition:transform .12s ease,box-shadow .2s ease}
+.back-escrew{display:inline-block;font-size:15px;font-weight:600;color:var(--accent-ink);text-decoration:none;padding:4px 0}
 .gear:active{transform:scale(.94)}
 .gear svg{width:22px;height:22px}
 .sheet{position:fixed;inset:0;z-index:40;margin:0;width:100%;height:100%;max-width:none;max-height:none;border:none;padding:0;background:var(--bg-blur);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);color:var(--text);overflow-y:auto;-webkit-overflow-scrolling:touch;visibility:hidden;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1),visibility .3s}
@@ -278,6 +279,7 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 <header class="hdr">
   <div class="hdr-in">
     <div>
+      <a class="back-escrew" id="backEscrew" href="/" hidden>‹ eScrew</a>
       <h1>Fuel Window</h1>
       <p class="hdr-sub" id="hdrSub">—</p>
     </div>
@@ -455,7 +457,7 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 <script src="timer.js"></script>
 <script src="state.js"></script>
 <script>
-const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v34";
+const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v35";
 const{isValidDay,isValidMetric,normalizeState,validateBackup}=State;
 /* Повреждённый localStorage не должен блокировать запуск: normalizeState()
    сбрасывает на дефолты при полном крахе JSON и тихо чинит отдельные
@@ -1014,7 +1016,8 @@ q("#pdf").onchange=async e=>{
    при возврате на экран, если eScrew с тех пор обновил свой roster. */
 function syncEscrew(force){
   const r=window.EscrewBridge&&EscrewBridge.loadEscrewRoster();
-  if(!r){q("#escrewStatus").textContent="Не найден: откройте eScrew в этом же браузере или приложении";return}
+  q("#backEscrew").hidden=!r;
+  if(!r){q("#escrewStatus").textContent="Откройте Fuel Window из eScrew: Ещё → Open Fuel Window";return}
   const days=EscrewBridge.daysFromEscrew(r);
   q("#escrewStatus").textContent=days.length?"eScrew · "+days.length+" дней":"В eScrew нет дней";
   if(!days.length||(!force&&s.escrewAt===r.importedAt))return;
