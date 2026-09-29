@@ -393,6 +393,10 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 
   <p class="slabel">Расписание</p>
   <section class="card">
+    <div class="row" id="escrewRow" hidden>
+      <span class="rl">Roster из eScrew<small id="escrewStatus">Не найден</small></span>
+      <button class="btn btn-quiet mini" id="escrewSync" type="button">Обновить</button>
+    </div>
     <label class="row">
       <span class="rl">Roster PDF<small id="status">Файл не выбран</small></span>
       <span class="btn btn-quiet mini">Выбрать<input id="pdf" type="file" accept="application/pdf" hidden></span>
@@ -446,11 +450,12 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 <div class="update" id="update"><span>Доступна новая версия</span><button id="reload">Обновить</button></div>
 
 <script src="roster-parser.js"></script>
+<script src="escrew-bridge.js"></script>
 <script src="circadian.js"></script>
 <script src="timer.js"></script>
 <script src="state.js"></script>
 <script>
-const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v32";
+const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v33";
 const{isValidDay,isValidMetric,normalizeState,validateBackup}=State;
 /* Повреждённый localStorage не должен блокировать запуск: normalizeState()
    сбрасывает на дефолты при полном крахе JSON и тихо чинит отдельные
@@ -1004,6 +1009,24 @@ q("#pdf").onchange=async e=>{
     save();drawStatus();drawAll();
   }catch(x){q("#status").textContent="Ошибка: "+x.message+". Предыдущий ростер сохранён."}
 };
+/* Roster из eScrew: тот же origin (pwaplog.pages.dev/fuel/) — читаем его
+   localStorage напрямую. Ничего не уходит в сеть. Подтягиваем при запуске и
+   при возврате на экран, если eScrew с тех пор обновил свой roster. */
+function syncEscrew(force){
+  const r=window.EscrewBridge&&EscrewBridge.loadEscrewRoster();
+  q("#escrewRow").hidden=!r;
+  if(!r)return;
+  const days=EscrewBridge.daysFromEscrew(r);
+  q("#escrewStatus").textContent=days.length?"eScrew · "+days.length+" дней":"В eScrew нет дней";
+  if(!days.length||(!force&&s.escrewAt===r.importedAt))return;
+  s.days=State.mergeRoster(s.days,days);
+  if(!s.days.some(x=>x.date===s.date))s.date=s.days.some(x=>x.date===today())?today():days[0].date;
+  s.file={name:"eScrew",count:s.days.length};
+  s.escrewAt=r.importedAt;s.icsStale=true;
+  save();drawStatus();drawAll();
+}
+q("#escrewSync").onclick=()=>syncEscrew(true);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)syncEscrew(false)});
 q("#clear").onclick=()=>{
   if(!confirm("Удалить все локальные данные приложения?"))return;
   try{localStorage.removeItem(K)}catch(x){}
@@ -1015,6 +1038,7 @@ function drawStatus(){
 }
 
 q("#ver").textContent=APP_VERSION;
+syncEscrew(false);
 q("#mode").value=s.mode;q("#goal").value=s.goal;
 q("#bfOn").checked=!!s.bf.on;q("#bfFrom").value=s.bf.from;q("#bfTo").value=s.bf.to;drawBfRows();
 drawStatus();drawAll();
