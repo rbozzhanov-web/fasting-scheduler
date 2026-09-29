@@ -1,4 +1,4 @@
-const P="fuel-window-",C=P+"v35";
+const P="fuel-window-",C=P+"v36";
 const A=["./","./index.html","./roster-parser.js","./escrew-bridge.js","./circadian.js","./timer.js","./state.js","./icon.svg","./icon-180.png","./icon-512.png","./manifest.webmanifest","./vendor/pdf.mjs","./vendor/pdf.worker.mjs","./vendor/PDFJS-LICENSE.txt","./sw.js"];
 
 self.addEventListener("install",e=>e.waitUntil(caches.open(C).then(c=>c.addAll(A))));
@@ -26,6 +26,9 @@ self.addEventListener("notificationclick",e=>{
 
 self.addEventListener("fetch",e=>{
   if(e.request.method!=="GET")return;
+  /* Почтовый ящик eScrew (/api/…) — всегда из сети и никогда в кэш:
+     закэшированный ответ отдавал бы старый roster. */
+  if(new URL(e.request.url).pathname.startsWith("/api/"))return;
   if(new URL(e.request.url).pathname.endsWith("/reminders.ics")){
     e.respondWith(caches.open("fuel-ics").then(c=>c.match(e.request,{ignoreSearch:true}))
       .then(r=>r||new Response("Напоминания ещё не сформированы",{status:404})));

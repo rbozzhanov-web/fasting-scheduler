@@ -305,9 +305,9 @@ test("the visual release advances the installed PWA cache and visible version to
   let installJob;
   install({ waitUntil(job) { installJob = job; } });
   await installJob;
-  assert.equal(openedCache, "fuel-window-v35");
+  assert.equal(openedCache, "fuel-window-v36");
 
   await withPage(async ({ evaluate }) => {
-    assert.equal(await evaluate("document.querySelector('#ver').textContent"), "v35");
+    assert.equal(await evaluate("document.querySelector('#ver').textContent"), "v36");
   });
 });

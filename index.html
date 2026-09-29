@@ -124,7 +124,6 @@ button{cursor:pointer}p,span,b,small{overflow-wrap:anywhere}.tmrow>*{min-width:0
 h1{font-size:24px;font-weight:750;letter-spacing:-.6px;line-height:1.1;white-space:nowrap}
 .hdr-sub{font-size:13px;color:var(--dim);margin-top:2px}
 .gear{flex:0 0 auto;width:42px;height:42px;padding:0;border:1px solid var(--glass-control-border);border-radius:21px;background-color:var(--glass-control);background-image:var(--glass-spec);background-clip:padding-box;box-shadow:var(--glass-control-shadow);color:var(--accent-ink);display:grid;place-items:center;transition:transform .12s ease,box-shadow .2s ease}
-.back-escrew{display:inline-block;font-size:15px;font-weight:600;color:var(--accent-ink);text-decoration:none;padding:4px 0}
 .gear:active{transform:scale(.94)}
 .gear svg{width:22px;height:22px}
 .sheet{position:fixed;inset:0;z-index:40;margin:0;width:100%;height:100%;max-width:none;max-height:none;border:none;padding:0;background:var(--bg-blur);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);color:var(--text);overflow-y:auto;-webkit-overflow-scrolling:touch;visibility:hidden;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1),visibility .3s}
@@ -279,7 +278,6 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 <header class="hdr">
   <div class="hdr-in">
     <div>
-      <a class="back-escrew" id="backEscrew" href="/" hidden>‹ eScrew</a>
       <h1>Fuel Window</h1>
       <p class="hdr-sub" id="hdrSub">—</p>
     </div>
@@ -396,8 +394,12 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
   <p class="slabel">Расписание</p>
   <section class="card">
     <div class="row" id="escrewRow">
-      <span class="rl">Roster из eScrew<small id="escrewStatus">Не найден</small></span>
-      <button class="btn btn-quiet mini" id="escrewSync" type="button">Обновить</button>
+      <span class="rl">Roster из eScrew<small id="escrewStatus">Не подключено</small></span>
+      <button class="btn btn-quiet mini" id="escrewSync" type="button">Вставить код</button>
+    </div>
+    <div class="row" id="escrewCodeRow" hidden>
+      <input id="escrewCode" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="fuel-…" aria-label="Код из eScrew" style="flex:1 1 auto;min-width:0;min-height:44px;padding:10px 12px">
+      <button class="btn btn-quiet mini" id="escrewLink" type="button">Подключить</button>
     </div>
     <label class="row">
       <span class="rl">Roster PDF<small id="status">Файл не выбран</small></span>
@@ -457,7 +459,7 @@ input[type=number]:focus,input[type=time]:focus,select:focus{outline:2px solid v
 <script src="timer.js"></script>
 <script src="state.js"></script>
 <script>
-const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v35";
+const q=s=>document.querySelector(s),K="fuel-v4",APP_VERSION="v36";
 const{isValidDay,isValidMetric,normalizeState,validateBackup}=State;
 /* Повреждённый localStorage не должен блокировать запуск: normalizeState()
    сбрасывает на дефолты при полном крахе JSON и тихо чинит отдельные
@@ -1011,14 +1013,15 @@ q("#pdf").onchange=async e=>{
     save();drawStatus();drawAll();
   }catch(x){q("#status").textContent="Ошибка: "+x.message+". Предыдущий ростер сохранён."}
 };
-/* Roster из eScrew: тот же origin (pwaplog.pages.dev/fuel/) — читаем его
-   localStorage напрямую. Ничего не уходит в сеть. Подтягиваем при запуске и
-   при возврате на экран, если eScrew с тех пор обновил свой roster. */
-function syncEscrew(force){
-  const r=window.EscrewBridge&&EscrewBridge.loadEscrewRoster();
-  q("#backEscrew").hidden=!r;
-  if(!r){q("#escrewStatus").textContent="Откройте Fuel Window из eScrew: Ещё → Open Fuel Window";return}
-  const days=EscrewBridge.daysFromEscrew(r);
+/* Roster из eScrew. Fuel Window — отдельное приложение, а iOS даёт каждому
+   приложению на экране «Домой» своё хранилище, поэтому roster приходит из
+   зашифрованного почтового ящика eScrew (см. escrew-bridge.js). Код fuel-…
+   вставляется один раз; дальше roster подтягивается при запуске и при каждом
+   возврате на экран. Если Fuel Window открыт там же, где eScrew (Safari),
+   roster читается прямо из общего localStorage, без сети. */
+const B=window.EscrewBridge;
+function applyEscrew(r,force){
+  const days=B.daysFromEscrew(r);
   q("#escrewStatus").textContent=days.length?"eScrew · "+days.length+" дней":"В eScrew нет дней";
   if(!days.length||(!force&&s.escrewAt===r.importedAt))return;
   s.days=State.mergeRoster(s.days,days);
@@ -1027,7 +1030,38 @@ function syncEscrew(force){
   s.escrewAt=r.importedAt;s.icsStale=true;
   save();drawStatus();drawAll();
 }
-q("#escrewSync").onclick=()=>syncEscrew(true);
+let escrewBusy=false;
+async function syncEscrew(force){
+  if(escrewBusy)return;
+  const secret=B.loadLink();
+  q("#escrewSync").textContent=secret?"Обновить":"Вставить код";
+  const local=B.loadEscrewRoster();
+  if(local)return applyEscrew(local,force);
+  if(!secret){q("#escrewStatus").textContent="Не подключено: eScrew → More → Fuel Window → Connect";return}
+  escrewBusy=true;
+  if(force)q("#escrewStatus").textContent="Проверяю…";
+  try{
+    const r=await B.fetchLinkedRoster(secret);
+    if(r)applyEscrew(r,force);
+    else q("#escrewStatus").textContent="Подключено. Откройте eScrew, чтобы он отправил roster";
+  }catch(e){
+    q("#escrewStatus").textContent=(e&&/fetch|network|load/i.test(e.message)?"Нет связи":e.message)+(s.escrewAt?" · последний roster сохранён":"");
+  }finally{escrewBusy=false}
+}
+function linkEscrew(text){
+  const secret=B.parseLinkCode(text);
+  if(!secret){q("#escrewStatus").textContent="Это не код из eScrew: он начинается с fuel-";return false}
+  B.saveLink(secret);s.escrewAt=null;
+  q("#escrewCodeRow").hidden=true;q("#escrewCode").value="";
+  syncEscrew(true);return true;
+}
+q("#escrewSync").onclick=async()=>{
+  if(B.loadLink())return syncEscrew(true);
+  /* Кнопка просит буфер обмена; если iOS не дал — поле для вставки вручную. */
+  try{const text=await navigator.clipboard.readText();if(linkEscrew(text))return}catch(e){}
+  q("#escrewCodeRow").hidden=false;q("#escrewCode").focus();
+};
+q("#escrewLink").onclick=()=>linkEscrew(q("#escrewCode").value);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)syncEscrew(false)});
 q("#clear").onclick=()=>{
   if(!confirm("Удалить все локальные данные приложения?"))return;

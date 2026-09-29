@@ -41,3 +41,39 @@ test('loadEscrewRoster: reads the shared key, tolerates absence and junk', () =>
   assert.equal(loadEscrewRoster(store('{nope')), null);
   assert.equal(loadEscrewRoster(store(JSON.stringify(roster))).duties.length, 3);
 });
+
+const { parseLinkCode, mailbox, fetchLinkedRoster, saveLink, loadLink } = require('../escrew-bridge.js');
+const SECRET = Buffer.alloc(32, 7).toString('base64url');
+
+test('parseLinkCode: finds the code inside other words, rejects the rest', () => {
+  assert.equal(parseLinkCode('here: fuel-' + SECRET + ' thanks'), SECRET);
+  assert.equal(parseLinkCode('pair-' + SECRET), null);
+  assert.equal(parseLinkCode('fuel-short'), null);
+  assert.equal(parseLinkCode(null), null);
+});
+
+test('fetchLinkedRoster: opens what was sealed under the same labels eScrew uses', async () => {
+  const subtle = crypto.subtle, enc = new TextEncoder();
+  const hk = info => ({ name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(0), info: enc.encode(info) });
+  const base = await subtle.importKey('raw', Buffer.from(SECRET, 'base64url'), 'HKDF', false, ['deriveKey']);
+  const key = await subtle.deriveKey(hk('pwaplog fuel key'), base, { name: 'AES-GCM', length: 256 }, false, ['encrypt']);
+  const iv = new Uint8Array(12).fill(1);
+  const sent = { app: 'pwaplog-fuel', version: 1, importedAt: 'x', duties: roster.duties, absences: [], activities: [] };
+  const sealed = new Uint8Array(await subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(sent))));
+  const body = new Uint8Array([...iv, ...sealed]);
+  const { id } = await mailbox(SECRET);
+  assert.match(id, /^[0-9a-f]{64}$/);
+  let asked;
+  const got = await fetchLinkedRoster(SECRET, async url => { asked = url; return new Response(body); });
+  assert.equal(asked, '/api/schedule/' + id);
+  assert.equal(daysFromEscrew(got)[0].code, '187');
+  assert.equal(await fetchLinkedRoster(SECRET, async () => new Response('', { status: 404 })), null);
+  const other = Buffer.alloc(32, 9).toString('base64url');
+  await assert.rejects(fetchLinkedRoster(other, async () => new Response(body)), /заново/);
+});
+
+test('saveLink/loadLink round-trip and clear', () => {
+  const m = new Map(), st = { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: k => m.delete(k) };
+  saveLink(SECRET, st); assert.equal(loadLink(st), SECRET);
+  saveLink(null, st); assert.equal(loadLink(st), null);
+});
